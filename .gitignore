@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# BigQuery service account keys
+/key/*
+!key/.gitkeep
+
+/docs

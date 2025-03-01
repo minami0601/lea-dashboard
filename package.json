@@ -4,22 +4,39 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:prod": "NODE_ENV=production next dev",
     "build": "next build",
+    "build:prod": "NODE_ENV=production next build",
     "start": "next start",
-    "lint": "next lint"
+    "start:prod": "NODE_ENV=production next start",
+    "lint": "next lint",
+    "format": "biome format",
+    "check": "biome check",
+    "check:fix": "biome check --apply",
+    "gcp:auth": "gcloud auth application-default login",
+    "gcp:auth:print": "gcloud auth application-default print-access-token"
   },
   "dependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "next": "15.2.0"
+    "@google-cloud/bigquery": "^7.9.2",
+    "@types/recharts": "^1.8.29",
+    "date-fns": "^4.1.0",
+    "next": "15.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "recharts": "2.9.0",
+    "remeda": "^2.21.0"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@eslint/eslintrc": "^3",
     "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "autoprefixer": "^10.4.19",
+    "biome": "^0.3.3",
     "eslint": "^9",
     "eslint-config-next": "15.2.0",
-    "@eslint/eslintrc": "^3"
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5"
   }
 }
