@@ -1,4 +1,5 @@
 import { addDays, format, subDays } from 'date-fns';
+import { fetchFunnelData, fetchFunnelTimeSeriesData } from './bigqueryClient';
 
 // 比較データの型
 type ComparisonPeriod = '前日比' | '前週比' | '前月比';
@@ -210,37 +211,105 @@ const generateSearchCountData = (): GraphSection => {
 
 // ファネル推移のデータを生成
 const generateFunnelTimeSeriesData = (): GraphSection => {
-  // 各ステージのデータを生成
-  const hpViews = generateTimeSeriesData(90, 10000, 1000, 50, true);
-  const memberPageViews = hpViews.map(item => ({
-    date: item.date,
-    value: Math.round(item.value * 0.6), // HPの60%
-  }));
-  const registrations = memberPageViews.map(item => ({
-    date: item.date,
-    value: Math.round(item.value * 0.3), // 会員ページの30%
-  }));
-  const paidConversions = registrations.map(item => ({
-    date: item.date,
-    value: Math.round(item.value * 0.15), // 新規登録の15%
-  }));
-  const firstOrders = paidConversions.map(item => ({
-    date: item.date,
-    value: Math.round(item.value * 0.8), // 有料転換の80%
-  }));
+  // サンプルデータを生成する関数
+  const generateSampleFunnelTimeSeriesData = () => {
+    // 各ステージのデータを生成
+    const hpViews = generateTimeSeriesData(90, 10000, 1000, 50, true);
+    const memberPageViews = hpViews.map(item => ({
+      date: item.date,
+      value: Math.round(item.value * 0.6), // HPの60%
+    }));
+    const registrations = memberPageViews.map(item => ({
+      date: item.date,
+      value: Math.round(item.value * 0.3), // 会員ページの30%
+    }));
+    const paidConversions = registrations.map(item => ({
+      date: item.date,
+      value: Math.round(item.value * 0.15), // 新規登録の15%
+    }));
+    const firstOrders = paidConversions.map(item => ({
+      date: item.date,
+      value: Math.round(item.value * 0.8), // 有料転換の80%
+    }));
 
-  return {
-    title: 'ファネル推移',
-    cols: '6',
-    data: [
-      { title: 'HP', data: hpViews },
-      { title: '会員ページ', data: memberPageViews },
-      { title: '新規登録', data: registrations },
-      { title: '有料転換', data: paidConversions },
-      { title: '初注文完了', data: firstOrders },
-    ],
-    subData: generateComparisonData(),
+    return {
+      hpViews,
+      memberPageViews,
+      registrations,
+      paidConversions,
+      firstOrders
+    };
   };
+
+  // BigQueryからデータを取得する非同期関数
+  // 注意: この関数は非同期ですが、generateFunnelTimeSeriesDataは同期関数なので
+  // 実際のデータ取得は行わず、サンプルデータを返します
+  // 実際のデータ取得は別途実装する必要があります
+  try {
+    // サンプルデータを使用
+    console.log('ファネル時系列データにサンプルデータを使用します');
+    const sampleData = generateSampleFunnelTimeSeriesData();
+
+    return {
+      title: 'ファネル推移',
+      cols: '6',
+      data: [
+        { title: 'HP', data: sampleData.hpViews },
+        { title: '会員ページ', data: sampleData.memberPageViews },
+        { title: '新規登録', data: sampleData.registrations },
+        { title: '有料転換', data: sampleData.paidConversions },
+        { title: '初注文完了', data: sampleData.firstOrders },
+      ],
+      subData: generateComparisonData(),
+    };
+  } catch (error) {
+    console.error('Error in generateFunnelTimeSeriesData:', error);
+
+    // エラー時はサンプルデータを使用
+    const sampleData = generateSampleFunnelTimeSeriesData();
+
+    return {
+      title: 'ファネル推移',
+      cols: '6',
+      data: [
+        { title: 'HP', data: sampleData.hpViews },
+        { title: '会員ページ', data: sampleData.memberPageViews },
+        { title: '新規登録', data: sampleData.registrations },
+        { title: '有料転換', data: sampleData.paidConversions },
+        { title: '初注文完了', data: sampleData.firstOrders },
+      ],
+      subData: generateComparisonData(),
+    };
+  }
+};
+
+// 非同期バージョンのファネル時系列データ生成関数
+export const generateFunnelTimeSeriesDataAsync = async (): Promise<GraphSection> => {
+  try {
+    // BigQueryからデータを取得
+    const timeSeriesData = await fetchFunnelTimeSeriesData();
+
+    if (!timeSeriesData) {
+      console.log('BigQueryからファネル時系列データが取得できませんでした。サンプルデータを使用します。');
+      return generateFunnelTimeSeriesData();
+    }
+
+    return {
+      title: 'ファネル推移',
+      cols: '6',
+      data: [
+        { title: 'HP', data: timeSeriesData.hpViews },
+        { title: '会員ページ', data: timeSeriesData.memberPageViews },
+        { title: '新規登録', data: timeSeriesData.registrations },
+        { title: '有料転換', data: timeSeriesData.paidConversions },
+        { title: '初注文完了', data: timeSeriesData.firstOrders },
+      ],
+      subData: generateComparisonData(),
+    };
+  } catch (error) {
+    console.error('Error fetching funnel time series data:', error);
+    return generateFunnelTimeSeriesData();
+  }
 };
 
 // HPへの流入内訳のデータを生成
@@ -284,7 +353,77 @@ const generateTrafficSourceData = (): TrafficData[] => {
 };
 
 // ファネルデータを生成
-const generateFunnelData = (): FunnelSection[] => {
+export const generateFunnelData = async (): Promise<FunnelSection[]> => {
+  try {
+    // BigQueryからデータを取得
+    const rows = await fetchFunnelData();
+
+    if (!rows || rows.length === 0) {
+      console.log('BigQueryからデータが取得できませんでした。サンプルデータを使用します。');
+      return generateSampleFunnelData();
+    }
+
+    // 合計値を計算
+    let totalHP = 0;
+    let totalMemberPage = 0;
+    let totalRegistration = 0;
+    let totalPaidConversion = 0;
+    let totalFirstOrder = 0;
+
+    // 各日のデータを合計
+    rows.forEach((row: any) => {
+      totalHP += Number(row.unique_users_3);
+      totalMemberPage += Number(row.unique_users_2);
+      totalRegistration += Number(row.sub);
+      totalPaidConversion += Number(row.conv);
+      totalFirstOrder += Number(row.fst);
+    });
+
+    // 全体の変換率を計算
+    const overallConversionRate = totalHP > 0 ? (totalFirstOrder / totalHP) * 100 : 0;
+
+    return [
+      {
+        title: 'ファネル推移',
+        data: [
+          {
+            title: 'HP',
+            件数: totalHP,
+            subData: generateComparisonData(),
+          },
+          {
+            title: '会員ページ',
+            件数: totalMemberPage,
+            subData: generateComparisonData(),
+          },
+          {
+            title: '新規登録',
+            件数: totalRegistration,
+            subData: generateComparisonData(),
+          },
+          {
+            title: '有料転換',
+            件数: totalPaidConversion,
+            subData: generateComparisonData(),
+          },
+          {
+            title: '初注文完了',
+            件数: totalFirstOrder,
+            subData: generateComparisonData(),
+          },
+        ],
+        prevPercent: overallConversionRate,
+      },
+    ];
+  } catch (error) {
+    console.error('Error fetching funnel data:', error);
+    // エラーが発生した場合はサンプルデータを返す
+    return generateSampleFunnelData();
+  }
+};
+
+// サンプルのファネルデータを生成する関数
+const generateSampleFunnelData = (): FunnelSection[] => {
   const hpCount = 50000;
   const memberPageCount = Math.round(hpCount * 0.6); // HPの60%
   const registrationCount = Math.round(memberPageCount * 0.3); // 会員ページの30%
@@ -329,17 +468,40 @@ const generateFunnelData = (): FunnelSection[] => {
 };
 
 // ダッシュボード全体のデータを生成
-export const generateDashboardData = (): Dashboard => {
-  return {
-    グラフ系: [
-      generateGMVData(),
-      generatePaidSubscriptionsData(),
-      generateChurnRateData(),
-      generateNewRegistrationsData(),
-      generateFunnelTimeSeriesData(),
-      generateSearchCountData(),
-    ],
-    HPへの流入内訳: generateTrafficSourceData(),
-    ファネル系: generateFunnelData(),
-  };
+export const generateDashboardData = async (): Promise<Dashboard> => {
+  try {
+    // 常にBigQueryからデータを取得
+    console.log('BigQueryからデータを取得します');
+
+    return {
+      グラフ系: [
+        generateGMVData(),
+        generatePaidSubscriptionsData(),
+        generateChurnRateData(),
+        generateNewRegistrationsData(),
+        await generateFunnelTimeSeriesDataAsync(),
+        generateSearchCountData(),
+      ],
+      HPへの流入内訳: generateTrafficSourceData(),
+      ファネル系: await generateFunnelData(),
+    };
+  } catch (error) {
+    console.error('Error generating dashboard data:', error);
+
+    // エラー時はサンプルデータを使用
+    console.log('エラーが発生したため、サンプルデータを使用します');
+
+    return {
+      グラフ系: [
+        generateGMVData(),
+        generatePaidSubscriptionsData(),
+        generateChurnRateData(),
+        generateNewRegistrationsData(),
+        generateFunnelTimeSeriesData(),
+        generateSearchCountData(),
+      ],
+      HPへの流入内訳: generateTrafficSourceData(),
+      ファネル系: generateSampleFunnelData(),
+    };
+  }
 };

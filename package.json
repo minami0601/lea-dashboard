@@ -4,11 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "dev:prod": "NODE_ENV=production next dev",
     "build": "next build",
-    "build:prod": "NODE_ENV=production next build",
     "start": "next start",
-    "start:prod": "NODE_ENV=production next start",
     "lint": "next lint",
     "format": "biome format",
     "check": "biome check",

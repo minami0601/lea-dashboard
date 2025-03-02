@@ -3,9 +3,8 @@ import { generateDashboardData } from '@/lib/sampleData';
 
 export async function GET() {
   try {
-    // デモデータを生成
-    const dashboardData = generateDashboardData();
-    console.log(dashboardData.グラフ系[2].data[0].data);
+    // デモデータを生成（非同期関数になったので await を追加）
+    const dashboardData = await generateDashboardData();
 
     // JSONレスポンスとして返す
     return NextResponse.json(dashboardData);

@@ -12,6 +12,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
+import { TooltipProps } from 'recharts/types/component/Tooltip';
 
 // 時系列データの型
 interface TimeSeriesData {
@@ -106,12 +107,10 @@ export default function ChartComponent({ title, data, comparisonData }: ChartCom
   };
 
   // 日付範囲の変更ハンドラー
-  const handleDateRangeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setDateRange((prev: DateRange) => ({
-      ...prev,
-      [name]: value,
-    }));
+  const handleDateRangeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    const [start, end] = value.split('|');
+    setDateRange({ start, end });
   };
 
   // データセットの表示/非表示を切り替えるハンドラー
@@ -442,16 +441,16 @@ export default function ChartComponent({ title, data, comparisonData }: ChartCom
                 tickFormatter: (value: number) => title.includes('解約率') ? `${value}%` : formatValue(value),
                 key: "yAxis"
               }),
-              React.createElement(Tooltip, {
+              React.createElement(Tooltip as any, {
                 formatter: customTooltipFormatter,
                 labelFormatter: formatTooltipLabel,
                 key: "tooltip"
               }),
-              React.createElement(Legend, { key: "legend" }),
+              React.createElement(Legend as any, { key: "legend" }),
               ...data
                 .filter(dataset => activeDataSets.includes(dataset.title))
                 .map((dataset, index) =>
-                  React.createElement(Line, {
+                  React.createElement(Line as any, {
                     type: "monotone",
                     dataKey: dataset.title,
                     name: dataset.title,

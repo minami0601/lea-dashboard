@@ -56,10 +56,8 @@ function generateMultiMetricData(days: number) {
 }
 
 async function fetchDashboardData(): Promise<Dashboard> {
-  // 開発環境では絶対パスでAPIを呼び出す
-  const baseUrl = process.env.NODE_ENV === 'production'
-    ? process.env.NEXT_PUBLIC_API_BASE_URL || ''
-    : 'http://localhost:3000';
+  // 常に同じベースURLを使用
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000';
 
   const response = await fetch(`${baseUrl}/api/dashboard`, {
     cache: 'no-store' // SSRで毎回最新データを取得

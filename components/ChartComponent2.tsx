@@ -11,6 +11,8 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
+import { TooltipProps } from 'recharts/types/component/Tooltip';
 
 type MultiMetricDataPoint = {
   date: string;
@@ -247,6 +249,11 @@ export default function ChartComponent({ data }: ChartComponentProps) {
     return value.toLocaleString();
   };
 
+  const customTooltipFormatter = (value: number, name: string) => {
+    const metric = metrics.find(m => m.key === name);
+    return [formatValue(value), metric ? metric.name : name];
+  };
+
   return (
     <div>
       <div className="mb-5 flex flex-wrap items-center gap-5">
@@ -315,10 +322,10 @@ export default function ChartComponent({ data }: ChartComponentProps) {
           {React.createElement(LineChart, {
             data: displayData,
             margin: {
-              top: 5,
+              top: 20,
               right: 30,
               left: 20,
-              bottom: 5,
+              bottom: 20,
             },
             children: [
               React.createElement(CartesianGrid, { strokeDasharray: "3 3", key: "grid" }),
@@ -332,19 +339,16 @@ export default function ChartComponent({ data }: ChartComponentProps) {
                 label: { value: '数値', angle: -90, position: 'insideLeft', offset: -5 },
                 key: "yAxis"
               }),
-              React.createElement(Tooltip, {
-                formatter: (value: number, name: string) => {
-                  const metric = metrics.find(m => m.key === name);
-                  return [formatValue(value), metric ? metric.name : name];
-                },
+              React.createElement(Tooltip as any, {
+                formatter: customTooltipFormatter,
                 labelFormatter: formatTooltipLabel,
                 key: "tooltip"
               }),
-              React.createElement(Legend, { key: "legend" }),
+              React.createElement(Legend as any, { key: "legend" }),
               ...metrics
                 .filter(metric => activeMetrics.includes(metric.key))
                 .map(metric =>
-                  React.createElement(Line, {
+                  React.createElement(Line as any, {
                     type: "monotone",
                     dataKey: metric.key,
                     name: metric.name,
