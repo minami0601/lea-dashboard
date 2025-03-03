@@ -1,8 +1,7 @@
 'use client';
 
 import * as React from 'react';
-
-type FunnelStage = 'HP' | '会員ページ' | '新規登録' | '有料転換' | '初注文完了';
+import { useState } from 'react';
 
 type FunnelStep = {
   title: string;
@@ -16,7 +15,57 @@ type FunnelComponentProps = {
   overallConversionRate?: number;
 };
 
+// 日付をYYYY-MM-DD形式に変換する関数
+const formatDateToString = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// 日付関連のユーティリティ関数
+const getSixMonthsAgo = (): string => {
+  const date = new Date();
+  date.setMonth(date.getMonth() - 6);
+  return formatDateToString(date);
+};
+
+const getThreeMonthsAgo = (): string => {
+  const date = new Date();
+  date.setMonth(date.getMonth() - 3);
+  return formatDateToString(date);
+};
+
+const getOneMonthAgo = (): string => {
+  const date = new Date();
+  date.setMonth(date.getMonth() - 1);
+  return formatDateToString(date);
+};
+
 export default function FunnelComponent({ title, steps, overallConversionRate }: FunnelComponentProps) {
+  // 期間選択のための状態
+  const [dateRange, setDateRange] = useState<{
+    start: string;
+    end: string;
+  }>({
+    start: getThreeMonthsAgo(),
+    end: formatDateToString(new Date()),
+  });
+
+  // 日付範囲の変更ハンドラー
+  const handleDateRangeChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
+    if (e.target instanceof HTMLSelectElement) {
+      const [start, end] = e.target.value.split('|');
+      setDateRange({ start, end });
+    } else {
+      const { name, value } = e.target;
+      setDateRange(prev => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
+  };
+
   // 前のステップからの変換率を計算
   const getConversionRate = (currentIndex: number): number => {
     if (currentIndex === 0 || steps[currentIndex - 1].value === 0) {
@@ -40,6 +89,59 @@ export default function FunnelComponent({ title, steps, overallConversionRate }:
       {title && (
         <h3 className="mb-5 text-center text-xl font-bold">{title}</h3>
       )}
+
+      {/* 期間選択コントロール */}
+      <div className="mb-4 flex flex-wrap items-center gap-4">
+        <div>
+          <label htmlFor="funnelDateRange" className="mr-2 text-sm">
+            プリセット:
+          </label>
+          <select
+            id="funnelDateRange"
+            value={`${dateRange.start}|${dateRange.end}`}
+            onChange={handleDateRangeChange}
+            className="rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800"
+          >
+            <option value={`${getSixMonthsAgo()}|${formatDateToString(new Date())}`}>
+              過去6ヶ月
+            </option>
+            <option value={`${getThreeMonthsAgo()}|${formatDateToString(new Date())}`}>
+              過去3ヶ月
+            </option>
+            <option value={`${getOneMonthAgo()}|${formatDateToString(new Date())}`}>
+              過去1ヶ月
+            </option>
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="funnelStartDate" className="mr-2 text-sm">
+            開始日:
+          </label>
+          <input
+            type="date"
+            id="funnelStartDate"
+            name="start"
+            value={dateRange.start}
+            onChange={handleDateRangeChange}
+            className="rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="funnelEndDate" className="mr-2 text-sm">
+            終了日:
+          </label>
+          <input
+            type="date"
+            id="funnelEndDate"
+            name="end"
+            value={dateRange.end}
+            onChange={handleDateRangeChange}
+            className="rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800"
+          />
+        </div>
+      </div>
 
       {/* 横向きファネル */}
       <div className="flex items-center justify-center gap-2.5 overflow-x-auto py-2.5">

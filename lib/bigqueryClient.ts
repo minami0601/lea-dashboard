@@ -155,14 +155,6 @@ export async function fetchFunnelTimeSeriesData() {
       value: Number(row.fst)
     }));
 
-    console.log('変換後のデータサンプル:', {
-      hpViews: hpViews.slice(0, 3),
-      memberPageViews: memberPageViews.slice(0, 3),
-      registrations: registrations.slice(0, 3),
-      paidConversions: paidConversions.slice(0, 3),
-      firstOrders: firstOrders.slice(0, 3)
-    });
-
     return {
       hpViews,
       memberPageViews,

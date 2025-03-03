@@ -107,10 +107,20 @@ export default function ChartComponent({ title, data, comparisonData }: ChartCom
   };
 
   // 日付範囲の変更ハンドラー
-  const handleDateRangeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    const [start, end] = value.split('|');
-    setDateRange({ start, end });
+  const handleDateRangeChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
+    if (e.target.type === 'date') {
+      // 日付入力フィールドからの変更
+      const { name, value } = e.target;
+      setDateRange((prev: DateRange) => ({
+        ...prev,
+        [name]: value,
+      }));
+    } else {
+      // セレクトボックスからの変更
+      const value = e.target.value;
+      const [start, end] = value.split('|');
+      setDateRange({ start, end });
+    }
   };
 
   // データセットの表示/非表示を切り替えるハンドラー
@@ -381,7 +391,7 @@ export default function ChartComponent({ title, data, comparisonData }: ChartCom
 
         <div>
           <label htmlFor="dateRange" className="mr-2 text-sm">
-            範囲:
+            プリセット:
           </label>
           <select
             id="dateRange"
@@ -401,21 +411,55 @@ export default function ChartComponent({ title, data, comparisonData }: ChartCom
           </select>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {data.map((dataset) => (
-            <button
-              key={dataset.title}
-              onClick={() => handleDataSetToggle(dataset.title)}
-              className={`rounded px-2 py-1 text-xs font-medium ${
-                activeDataSets.includes(dataset.title)
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
-              }`}
-            >
-              {dataset.title}
-            </button>
-          ))}
+        <div>
+          <label htmlFor="startDate" className="mr-2 text-sm">
+            開始日:
+          </label>
+          <input
+            type="date"
+            id="startDate"
+            name="start"
+            value={dateRange.start}
+            onChange={handleDateRangeChange}
+            className="rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800"
+          />
         </div>
+
+        <div>
+          <label htmlFor="endDate" className="mr-2 text-sm">
+            終了日:
+          </label>
+          <input
+            type="date"
+            id="endDate"
+            name="end"
+            value={dateRange.end}
+            onChange={handleDateRangeChange}
+            className="rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800"
+          />
+        </div>
+
+        {/* 既存のデータセット選択部分 */}
+        {data.length > 1 && (
+          <div className="ml-auto">
+            <span className="mr-2 text-sm">データセット:</span>
+            <div className="flex flex-wrap gap-2">
+              {data.map((dataSet, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleDataSetToggle(dataSet.title)}
+                  className={`rounded px-2 py-1 text-xs ${
+                    activeDataSets.includes(dataSet.title)
+                      ? 'bg-blue-500 text-white dark:bg-blue-600'
+                      : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  {dataSet.title}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* チャート */}

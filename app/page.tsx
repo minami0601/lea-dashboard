@@ -1,4 +1,4 @@
-import { Dashboard } from '../lib/sampleData';
+import { Dashboard } from '../lib/dashboardData';
 import ChartComponent from '../components/ChartComponent';
 import FunnelComponent from '../components/FunnelComponent';
 import TrafficComponent from '../components/TrafficComponent';

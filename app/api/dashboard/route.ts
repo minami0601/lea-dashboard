@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
-import { generateDashboardData } from '@/lib/sampleData';
+import { NextRequest, NextResponse } from 'next/server';
+import { generateDashboardData } from '@/lib/dashboardData';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     // デモデータを生成（非同期関数になったので await を追加）
     const dashboardData = await generateDashboardData();

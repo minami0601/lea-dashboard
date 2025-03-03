@@ -252,7 +252,7 @@ const generateFunnelTimeSeriesData = (): GraphSection => {
 
     return {
       title: 'ファネル推移',
-      cols: '6',
+      cols: '12',
       data: [
         { title: 'HP', data: sampleData.hpViews },
         { title: '会員ページ', data: sampleData.memberPageViews },
@@ -296,7 +296,7 @@ export const generateFunnelTimeSeriesDataAsync = async (): Promise<GraphSection>
 
     return {
       title: 'ファネル推移',
-      cols: '6',
+      cols: '12',
       data: [
         { title: 'HP', data: timeSeriesData.hpViews },
         { title: '会員ページ', data: timeSeriesData.memberPageViews },
@@ -473,16 +473,23 @@ export const generateDashboardData = async (): Promise<Dashboard> => {
     // 常にBigQueryからデータを取得
     console.log('BigQueryからデータを取得します');
 
+    // return {
+    //   グラフ系: [
+    //     generateGMVData(),
+    //     generatePaidSubscriptionsData(),
+    //     generateChurnRateData(),
+    //     generateNewRegistrationsData(),
+    //     await generateFunnelTimeSeriesDataAsync(),
+    //     generateSearchCountData(),
+    //   ],
+    //   HPへの流入内訳: generateTrafficSourceData(),
+    //   ファネル系: await generateFunnelData(),
+    // };
     return {
       グラフ系: [
-        generateGMVData(),
-        generatePaidSubscriptionsData(),
-        generateChurnRateData(),
-        generateNewRegistrationsData(),
         await generateFunnelTimeSeriesDataAsync(),
-        generateSearchCountData(),
       ],
-      HPへの流入内訳: generateTrafficSourceData(),
+      HPへの流入内訳: [],
       ファネル系: await generateFunnelData(),
     };
   } catch (error) {
