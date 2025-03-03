@@ -252,6 +252,7 @@ export default function Home() {
                 value: stage.件数
               }))}
               overallConversionRate={funnel.prevPercent}
+              dateRange={dateRange}
             />
           ))}
         </div>

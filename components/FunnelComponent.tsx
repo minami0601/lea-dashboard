@@ -3,9 +3,15 @@
 import * as React from 'react';
 import { useState } from 'react';
 
+interface TimeSeriesData {
+  date: string;
+  value: number;
+}
+
 type FunnelStep = {
   title: string;
-  value: number;
+  value: number | TimeSeriesData[];
+  filteredValue?: number;
   color?: string;
 };
 
@@ -13,6 +19,10 @@ type FunnelComponentProps = {
   title?: string;
   steps: FunnelStep[];
   overallConversionRate?: number;
+  dateRange?: {
+    start: string;
+    end: string;
+  };
 };
 
 // 日付をYYYY-MM-DD形式に変換する関数
@@ -42,46 +52,66 @@ const getOneMonthAgo = (): string => {
   return formatDateToString(date);
 };
 
-export default function FunnelComponent({ title, steps, overallConversionRate }: FunnelComponentProps) {
+export default function FunnelComponent({ title, steps, overallConversionRate, dateRange }: FunnelComponentProps) {
   // 期間選択のための状態
-  const [dateRange, setDateRange] = useState<{
+  const [selectedDateRange, setSelectedDateRange] = useState<{
     start: string;
     end: string;
   }>({
     start: getThreeMonthsAgo(),
-    end: formatDateToString(new Date()),
+    end: formatDateToString(new Date())
   });
 
-  // 日付範囲の変更ハンドラー
-  const handleDateRangeChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
-    if (e.target instanceof HTMLSelectElement) {
-      const [start, end] = e.target.value.split('|');
-      setDateRange({ start, end });
-    } else {
-      const { name, value } = e.target;
-      setDateRange(prev => ({
-        ...prev,
-        [name]: value,
-      }));
+  // dateRangeプロパティが提供された場合はそれを使用
+  React.useEffect(() => {
+    if (dateRange) {
+      setSelectedDateRange(dateRange);
     }
+  }, [dateRange]);
+
+  // 日付範囲に基づいてTimeSeriesDataをフィルタリングする関数
+  const filterDataByDateRange = (data: TimeSeriesData[]): TimeSeriesData[] => {
+    if (!data || !Array.isArray(data)) return [];
+
+    return data.filter(item => {
+      const itemDate = item.date;
+      return itemDate >= selectedDateRange.start && itemDate <= selectedDateRange.end;
+    });
   };
+
+  // 各ステップについて、日付範囲でフィルタリングされたデータまたは単一の値を取得
+  const getFilteredSteps = (): FunnelStep[] => {
+    return steps.map(step => {
+      if (Array.isArray(step.value)) {
+        const filteredData = filterDataByDateRange(step.value);
+        return {
+          ...step,
+          filteredValue: filteredData.length > 0
+            ? filteredData.reduce((sum, item) => sum + item.value, 0)
+            : 0, // フィルタリングされたデータの合計値
+        };
+      }
+      return { ...step, filteredValue: step.value };
+    });
+  };
+
+  const filteredSteps = getFilteredSteps();
 
   // 前のステップからの変換率を計算
   const getConversionRate = (currentIndex: number): number => {
-    if (currentIndex === 0 || steps[currentIndex - 1].value === 0) {
+    // valueの値を取得する関数
+    const getValue = (step: any): number => {
+      return step.filteredValue || 0;
+    };
+
+    const currentValue = getValue(filteredSteps[currentIndex]);
+    const previousValue = currentIndex > 0 ? getValue(filteredSteps[currentIndex - 1]) : 0;
+
+    if (currentIndex === 0 || previousValue === 0) {
       return 100;
     }
-    return (steps[currentIndex].value / steps[currentIndex - 1].value) * 100;
+    return (currentValue / previousValue) * 100;
   };
-
-  // デフォルトの色
-  const defaultColors = [
-    '#8884d8', // 紫
-    '#82ca9d', // 緑
-    '#ffc658', // 黄色
-    '#ff8042', // オレンジ
-    '#0088fe', // 青
-  ];
 
   return (
     <div className="p-5">
@@ -92,7 +122,7 @@ export default function FunnelComponent({ title, steps, overallConversionRate }:
 
       {/* 横向きファネル */}
       <div className="flex items-center justify-center gap-2.5 overflow-x-auto py-2.5">
-        {steps.map((step, index) => (
+        {filteredSteps.map((step, index) => (
           <React.Fragment key={index}>
             {/* ステップボックス */}
             <div
@@ -102,12 +132,14 @@ export default function FunnelComponent({ title, steps, overallConversionRate }:
                 {step.title}
               </div>
               <div className="text-2xl font-bold">
-                {step.value.toLocaleString()}
+                {typeof step.filteredValue === 'number'
+                  ? step.filteredValue.toLocaleString()
+                  : '0'}
               </div>
             </div>
 
             {/* 矢印と変換率 */}
-            {index < steps.length - 1 && (
+            {index < filteredSteps.length - 1 && (
               <div className="flex flex-col items-center">
                 <div className="mb-1 text-xl font-bold text-gray-600">
                   {getConversionRate(index + 1).toFixed(1)}%
