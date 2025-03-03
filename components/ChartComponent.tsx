@@ -391,6 +391,7 @@ export default function ChartComponent({ title, data, comparisonData, dateRange,
               React.createElement(YAxis, {
                 label: { value: title.includes('解約率') ? '解約率 (%)' : '数値', angle: -90, position: 'insideLeft', offset: -5 },
                 tickFormatter: (value: number) => title.includes('解約率') ? `${value}%` : formatValue(value),
+                allowDecimals: false,
                 key: "yAxis"
               }),
               React.createElement(Tooltip as any, {

@@ -23,7 +23,7 @@ interface GraphDataSet {
 }
 
 // グラフ系の型
-type GraphTitle = 'GMV推移' | '有料契約数推移' | '解約率推移' | '新規会員登録推移' | '指名検索件数' | 'ファネル推移';
+type GraphTitle = 'GMV推移' | '有料契約数推移' | '解約率推移' | '新規会員登録推移' | '指名検索件数' | 'ファネル推移' | 'HPの推移';
 interface GraphSection {
   title: GraphTitle;
   cols: '6' | '12';
@@ -467,30 +467,127 @@ const generateSampleFunnelData = (): FunnelSection[] => {
   ];
 };
 
+// ファネルデータを一度だけ取得する共通関数
+export const fetchAndProcessFunnelData = async () => {
+  try {
+    // BigQueryからデータを一度だけ取得
+    const timeSeriesData = await fetchFunnelTimeSeriesData();
+
+    if (!timeSeriesData) {
+      console.log('BigQueryからデータが取得できませんでした。サンプルデータを使用します。');
+
+      // generateFunnelTimeSeriesDataの中のgenerateSampleFunnelTimeSeriesDataを使用
+      const generateSampleData = () => {
+        // 各ステージのデータを生成
+        const hpViews = generateTimeSeriesData(90, 10000, 1000, 50, true);
+        const memberPageViews = hpViews.map(item => ({
+          date: item.date,
+          value: Math.round(item.value * 0.6), // HPの60%
+        }));
+        const registrations = memberPageViews.map(item => ({
+          date: item.date,
+          value: Math.round(item.value * 0.3), // 会員ページの30%
+        }));
+        const paidConversions = registrations.map(item => ({
+          date: item.date,
+          value: Math.round(item.value * 0.15), // 新規登録の15%
+        }));
+        const firstOrders = paidConversions.map(item => ({
+          date: item.date,
+          value: Math.round(item.value * 0.8), // 有料転換の80%
+        }));
+
+        return {
+          hpViews,
+          memberPageViews,
+          registrations,
+          paidConversions,
+          firstOrders
+        };
+      };
+
+      return generateSampleData();
+    }
+
+    return timeSeriesData;
+  } catch (error) {
+    console.error('Error fetching funnel data:', error);
+
+    // エラー時はサンプルデータを生成
+    const generateSampleData = () => {
+      const hpViews = generateTimeSeriesData(90, 10000, 1000, 50, true);
+      const memberPageViews = hpViews.map(item => ({
+        date: item.date,
+        value: Math.round(item.value * 0.6),
+      }));
+      const registrations = memberPageViews.map(item => ({
+        date: item.date,
+        value: Math.round(item.value * 0.3),
+      }));
+      const paidConversions = registrations.map(item => ({
+        date: item.date,
+        value: Math.round(item.value * 0.15),
+      }));
+      const firstOrders = paidConversions.map(item => ({
+        date: item.date,
+        value: Math.round(item.value * 0.8),
+      }));
+
+      return {
+        hpViews,
+        memberPageViews,
+        registrations,
+        paidConversions,
+        firstOrders
+      };
+    };
+
+    return generateSampleData();
+  }
+};
+
 // ダッシュボード全体のデータを生成
 export const generateDashboardData = async (): Promise<Dashboard> => {
   try {
     // 常にBigQueryからデータを取得
     console.log('BigQueryからデータを取得します');
 
-    // return {
-    //   グラフ系: [
-    //     generateGMVData(),
-    //     generatePaidSubscriptionsData(),
-    //     generateChurnRateData(),
-    //     generateNewRegistrationsData(),
-    //     await generateFunnelTimeSeriesDataAsync(),
-    //     generateSearchCountData(),
-    //   ],
-    //   HPへの流入内訳: generateTrafficSourceData(),
-    //   ファネル系: await generateFunnelData(),
-    // };
+    // ファネルデータを一度だけ取得
+    const funnelTimeSeriesData = await fetchAndProcessFunnelData();
+
+    // ファネル推移グラフ用のデータセクション
+    const funnelTimeSeriesSection: GraphSection = {
+      title: 'ファネル推移',
+      cols: '12',
+      data: [
+        { title: '会員ページ', data: funnelTimeSeriesData.memberPageViews },
+        { title: '新規登録', data: funnelTimeSeriesData.registrations },
+        { title: '有料転換', data: funnelTimeSeriesData.paidConversions },
+        { title: '初注文完了', data: funnelTimeSeriesData.firstOrders },
+      ],
+      subData: [],
+    };
+
+    // HPの推移グラフ用のデータセクション
+    const hpTimeSeriesSection: GraphSection = {
+      title: 'HPの推移',
+      cols: '12',
+      data: [
+        { title: 'HP閲覧数', data: funnelTimeSeriesData.hpViews }
+      ],
+      subData: [],
+    };
+
+    // ファネルデータも取得
+    const funnelData = await generateFunnelData();
+
     return {
       グラフ系: [
-        await generateFunnelTimeSeriesDataAsync(),
+        hpTimeSeriesSection,
+        funnelTimeSeriesSection,
       ],
       HPへの流入内訳: [],
-      ファネル系: await generateFunnelData(),
+      ファネル系: funnelData,
     };
   } catch (error) {
     console.error('Error generating dashboard data:', error);
@@ -498,14 +595,57 @@ export const generateDashboardData = async (): Promise<Dashboard> => {
     // エラー時はサンプルデータを使用
     console.log('エラーが発生したため、サンプルデータを使用します');
 
+    // エラー時もファネルデータを一度だけ生成
+    const sampleFunnelData = (() => {
+      const hpViews = generateTimeSeriesData(90, 10000, 1000, 50, true);
+      const memberPageViews = hpViews.map(item => ({
+        date: item.date,
+        value: Math.round(item.value * 0.6),
+      }));
+      const registrations = memberPageViews.map(item => ({
+        date: item.date,
+        value: Math.round(item.value * 0.3),
+      }));
+      const paidConversions = registrations.map(item => ({
+        date: item.date,
+        value: Math.round(item.value * 0.15),
+      }));
+      const firstOrders = paidConversions.map(item => ({
+        date: item.date,
+        value: Math.round(item.value * 0.8),
+      }));
+
+      return {
+        hpViews,
+        memberPageViews,
+        registrations,
+        paidConversions,
+        firstOrders
+      };
+    })();
+
     return {
       グラフ系: [
-        generateGMVData(),
-        generatePaidSubscriptionsData(),
-        generateChurnRateData(),
-        generateNewRegistrationsData(),
-        generateFunnelTimeSeriesData(),
-        generateSearchCountData(),
+        {
+          title: 'ファネル推移',
+          cols: '12',
+          data: [
+            { title: 'HP', data: sampleFunnelData.hpViews },
+            { title: '会員ページ', data: sampleFunnelData.memberPageViews },
+            { title: '新規登録', data: sampleFunnelData.registrations },
+            { title: '有料転換', data: sampleFunnelData.paidConversions },
+            { title: '初注文完了', data: sampleFunnelData.firstOrders },
+          ],
+          subData: [],
+        },
+        {
+          title: 'HPの推移',
+          cols: '6',
+          data: [
+            { title: 'HP閲覧数', data: sampleFunnelData.hpViews }
+          ],
+          subData: [],
+        }
       ],
       HPへの流入内訳: generateTrafficSourceData(),
       ファネル系: generateSampleFunnelData(),

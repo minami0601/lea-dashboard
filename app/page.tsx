@@ -218,7 +218,7 @@ export default function Home() {
               key={index}
               className={section.cols === '6' ? 'col-span-6 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm bg-white dark:bg-gray-800' : 'col-span-12 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm bg-white dark:bg-gray-800'}
             >
-              <div className="h-[650px] w-full">
+              <div className="h-[550px] w-full">
                 <ChartComponent
                   title={section.title}
                   data={section.data}
