@@ -1,3 +1,6 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
 import { Dashboard } from '../lib/dashboardData';
 import ChartComponent from '../components/ChartComponent';
 import FunnelComponent from '../components/FunnelComponent';
@@ -55,6 +58,7 @@ function generateMultiMetricData(days: number) {
   return result;
 }
 
+// ダッシュボードデータを取得する関数
 async function fetchDashboardData(): Promise<Dashboard> {
   // 常に同じベースURLを使用
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000';
@@ -70,16 +74,140 @@ async function fetchDashboardData(): Promise<Dashboard> {
   return response.json();
 }
 
-export default async function Home() {
-  // APIからデータを取得
-  const dashboardData = await fetchDashboardData();
+// 日付をYYYY-MM-DD形式に変換する関数
+const formatDateToString = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
-  // ChartComponent2用のサンプルデータを生成
-  const multiMetricData = generateMultiMetricData(90);
+export default function Home() {
+  const [dashboardData, setDashboardData] = useState<Dashboard | null>(null);
+  const [multiMetricData, setMultiMetricData] = useState<any>(null);
+  const [dateRange, setDateRange] = useState({
+    start: (() => {
+      // 初期値として3ヶ月前の日付を設定
+      const date = new Date();
+      date.setMonth(date.getMonth() - 3);
+      return formatDateToString(date);
+    })(),
+    end: formatDateToString(new Date()),
+  });
+  const [periodType, setPeriodType] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
+  const [isLoading, setIsLoading] = useState(true);
+
+  // データを取得
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const data = await fetchDashboardData();
+        setDashboardData(data);
+        setMultiMetricData(generateMultiMetricData(90));
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // 日付範囲の変更ハンドラー
+  const handleDateRangeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setDateRange((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  // 期間タイプの変更ハンドラー
+  const handlePeriodTypeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPeriodType(e.target.value as 'daily' | 'weekly' | 'monthly');
+  };
+
+  if (isLoading || !dashboardData) {
+    return <div className="p-8 min-h-screen bg-white dark:bg-gray-900">読み込み中...</div>;
+  }
 
   return (
     <div className="p-8 min-h-screen bg-white dark:bg-gray-900">
-      <h1 className="text-3xl font-bold text-gray-900 dark:text-white">LEA Dashboard</h1>
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-white">データ分析ダッシュボード</h1>
+
+      {/* 日付範囲コントロール */}
+      <div className="mt-4 mb-6 flex flex-wrap items-center gap-4 border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800">
+        <div>
+          <label htmlFor="startDate" className="mr-2 text-sm">
+            開始日:
+          </label>
+          <input
+            type="date"
+            id="startDate"
+            name="start"
+            value={dateRange.start}
+            onChange={handleDateRangeChange}
+            className="rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="endDate" className="mr-2 text-sm">
+            終了日:
+          </label>
+          <input
+            type="date"
+            id="endDate"
+            name="end"
+            value={dateRange.end}
+            onChange={handleDateRangeChange}
+            className="rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800"
+          />
+        </div>
+
+        <div className="flex items-center ml-4">
+          <span className="mr-3 text-sm">集計単位:</span>
+          <div className="flex gap-3">
+            <div className="flex items-center">
+              <input
+                type="radio"
+                id="daily"
+                name="periodType"
+                value="daily"
+                checked={periodType === 'daily'}
+                onChange={handlePeriodTypeChange}
+                className="mr-1"
+              />
+              <label htmlFor="daily" className="text-sm">日次</label>
+            </div>
+            <div className="flex items-center">
+              <input
+                type="radio"
+                id="weekly"
+                name="periodType"
+                value="weekly"
+                checked={periodType === 'weekly'}
+                onChange={handlePeriodTypeChange}
+                className="mr-1"
+              />
+              <label htmlFor="weekly" className="text-sm">週次</label>
+            </div>
+            <div className="flex items-center">
+              <input
+                type="radio"
+                id="monthly"
+                name="periodType"
+                value="monthly"
+                checked={periodType === 'monthly'}
+                onChange={handlePeriodTypeChange}
+                className="mr-1"
+              />
+              <label htmlFor="monthly" className="text-sm">月次</label>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* グラフセクション */}
       <div className="mt-8">
@@ -90,12 +218,13 @@ export default async function Home() {
               key={index}
               className={section.cols === '6' ? 'col-span-6 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm bg-white dark:bg-gray-800' : 'col-span-12 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm bg-white dark:bg-gray-800'}
             >
-              <h3 className="text-xl font-medium mb-2 text-gray-800 dark:text-gray-200">{section.title}</h3>
               <div className="h-[650px] w-full">
                 <ChartComponent
                   title={section.title}
                   data={section.data}
-                  comparisonData={section.subData}
+                  comparisonData={section.title === 'ファネル推移' ? [] : section.subData}
+                  dateRange={dateRange}
+                  periodType={periodType}
                 />
               </div>
             </div>
@@ -104,16 +233,16 @@ export default async function Home() {
       </div>
 
       {/* トラフィックセクション */}
-      <div className="my-8">
+      {/* <div className="my-8">
         <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">HPへの流入内訳</h2>
         <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm bg-white dark:bg-gray-800">
           <TrafficComponent trafficData={dashboardData.HPへの流入内訳} />
         </div>
-      </div>
+      </div> */}
 
       {/* ファネルセクション */}
       <div className="my-8">
-        <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">コンバージョンファネル</h2>
+        <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">全体ファネル</h2>
         <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm bg-white dark:bg-gray-800">
           {dashboardData.ファネル系.map((funnel, index) => (
             <FunnelComponent
@@ -125,16 +254,6 @@ export default async function Home() {
               overallConversionRate={funnel.prevPercent}
             />
           ))}
-        </div>
-      </div>
-
-      {/* ChartComponent2セクション */}
-      <div className="my-8">
-        <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">改良版グラフコンポーネント</h2>
-        <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm bg-white dark:bg-gray-800">
-          <div className="h-[600px] w-full">
-            <ChartComponent2 data={multiMetricData} />
-          </div>
         </div>
       </div>
     </div>

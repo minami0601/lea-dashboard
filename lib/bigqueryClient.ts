@@ -22,11 +22,11 @@ export const bigqueryClient = new BigQuery(options);
 export async function fetchFunnelData() {
   const query = `
     WITH day_list AS (
-      -- 2024-12-01 から 現在日 (JST) までの連続日付を生成
+      -- 2024-01-01 から 現在日 (JST) までの連続日付を生成
       SELECT day AS event_date
       FROM UNNEST(
         GENERATE_DATE_ARRAY(
-          DATE('2024-12-01'),
+          DATE('2024-01-01'),
           CURRENT_DATE('Asia/Tokyo'),
           INTERVAL 1 DAY
         )
@@ -39,7 +39,7 @@ export async function fetchFunnelData() {
         DATE(subscription_date, 'Asia/Tokyo') AS dt_jst,
         COUNT(*) AS new_reg_count
       FROM \`lea-for-marketplace-prod.lea_admin_user.admin_user_data\`
-      WHERE subscription_date >= TIMESTAMP('2024-12-01 00:00:00', 'Asia/Tokyo')
+      WHERE subscription_date >= TIMESTAMP('2024-01-01 00:00:00', 'Asia/Tokyo')
       GROUP BY dt_jst
     ),
 
@@ -49,7 +49,7 @@ export async function fetchFunnelData() {
         DATE(conversion_date, 'Asia/Tokyo') AS dt_jst,
         COUNT(*) AS paid_conversion_count
       FROM \`lea-for-marketplace-prod.lea_admin_user.admin_user_data\`
-      WHERE conversion_date >= TIMESTAMP('2024-12-01 00:00:00', 'Asia/Tokyo')
+      WHERE conversion_date >= TIMESTAMP('2024-01-01 00:00:00', 'Asia/Tokyo')
       GROUP BY dt_jst
     ),
 
@@ -59,7 +59,7 @@ export async function fetchFunnelData() {
         DATE(first_order_date, 'Asia/Tokyo') AS dt_jst,
         COUNT(*) AS first_order_count
       FROM \`lea-for-marketplace-prod.lea_admin_user.admin_user_data\`
-      WHERE first_order_date >= TIMESTAMP('2024-12-01 00:00:00', 'Asia/Tokyo')
+      WHERE first_order_date >= TIMESTAMP('2024-01-01 00:00:00', 'Asia/Tokyo')
       GROUP BY dt_jst
     ),
 

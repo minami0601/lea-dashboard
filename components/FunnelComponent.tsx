@@ -90,67 +90,13 @@ export default function FunnelComponent({ title, steps, overallConversionRate }:
         <h3 className="mb-5 text-center text-xl font-bold">{title}</h3>
       )}
 
-      {/* 期間選択コントロール */}
-      <div className="mb-4 flex flex-wrap items-center gap-4">
-        <div>
-          <label htmlFor="funnelDateRange" className="mr-2 text-sm">
-            プリセット:
-          </label>
-          <select
-            id="funnelDateRange"
-            value={`${dateRange.start}|${dateRange.end}`}
-            onChange={handleDateRangeChange}
-            className="rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800"
-          >
-            <option value={`${getSixMonthsAgo()}|${formatDateToString(new Date())}`}>
-              過去6ヶ月
-            </option>
-            <option value={`${getThreeMonthsAgo()}|${formatDateToString(new Date())}`}>
-              過去3ヶ月
-            </option>
-            <option value={`${getOneMonthAgo()}|${formatDateToString(new Date())}`}>
-              過去1ヶ月
-            </option>
-          </select>
-        </div>
-
-        <div>
-          <label htmlFor="funnelStartDate" className="mr-2 text-sm">
-            開始日:
-          </label>
-          <input
-            type="date"
-            id="funnelStartDate"
-            name="start"
-            value={dateRange.start}
-            onChange={handleDateRangeChange}
-            className="rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="funnelEndDate" className="mr-2 text-sm">
-            終了日:
-          </label>
-          <input
-            type="date"
-            id="funnelEndDate"
-            name="end"
-            value={dateRange.end}
-            onChange={handleDateRangeChange}
-            className="rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800"
-          />
-        </div>
-      </div>
-
       {/* 横向きファネル */}
       <div className="flex items-center justify-center gap-2.5 overflow-x-auto py-2.5">
         {steps.map((step, index) => (
           <React.Fragment key={index}>
             {/* ステップボックス */}
             <div
-              className="min-w-[150px] rounded-lg px-5 py-4 text-center text-white shadow-md"
-              style={{ backgroundColor: step.color || defaultColors[index % defaultColors.length] }}
+              className="min-w-[150px] rounded-lg border border-gray-300 px-5 py-4 text-center"
             >
               <div className="mb-1 text-base font-bold">
                 {step.title}
@@ -175,20 +121,6 @@ export default function FunnelComponent({ title, steps, overallConversionRate }:
           </React.Fragment>
         ))}
       </div>
-
-      {/* 全体の変換率 */}
-      {steps.length >= 2 && (
-        <div className="mx-auto mt-8 max-w-[600px] rounded-lg bg-gray-100 p-4 text-center">
-          <div className="mb-1 text-base font-bold">
-            全体の変換率（{steps[0].title} → {steps[steps.length - 1].title}）
-          </div>
-          <div className="text-2xl text-gray-800">
-            {overallConversionRate !== undefined
-              ? overallConversionRate.toFixed(2)
-              : ((steps[steps.length - 1].value / steps[0].value) * 100).toFixed(2)}%
-          </div>
-        </div>
-      )}
     </div>
   );
 }

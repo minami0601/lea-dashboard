@@ -41,13 +41,14 @@ interface ChartComponentProps {
   title: string;
   data: GraphDataSet[];
   comparisonData: ComparisonData[];
+  dateRange: {
+    start: string;
+    end: string;
+  };
+  periodType: 'daily' | 'weekly' | 'monthly';
 }
 
 type PeriodType = 'daily' | 'weekly' | 'monthly';
-type DateRange = {
-  start: string;
-  end: string;
-};
 
 // 日付をYYYY-MM-DD形式に変換する関数
 const formatDateToString = (date: Date): string => {
@@ -85,13 +86,8 @@ const colors = [
   '#0088fe', // 青
 ];
 
-export default function ChartComponent({ title, data, comparisonData }: ChartComponentProps) {
+export default function ChartComponent({ title, data, comparisonData, dateRange, periodType }: ChartComponentProps) {
   const [isClient, setIsClient] = useState(false);
-  const [periodType, setPeriodType] = useState<PeriodType>('weekly');
-  const [dateRange, setDateRange] = useState<DateRange>({
-    start: getSixMonthsAgo(),
-    end: formatDateToString(new Date()),
-  });
   const [activeDataSets, setActiveDataSets] = useState<string[]>(
     data.map(dataset => dataset.title)
   );
@@ -100,28 +96,6 @@ export default function ChartComponent({ title, data, comparisonData }: ChartCom
   useEffect(() => {
     setIsClient(true);
   }, []);
-
-  // 期間タイプの変更ハンドラー
-  const handlePeriodTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setPeriodType(e.target.value as PeriodType);
-  };
-
-  // 日付範囲の変更ハンドラー
-  const handleDateRangeChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
-    if (e.target.type === 'date') {
-      // 日付入力フィールドからの変更
-      const { name, value } = e.target;
-      setDateRange((prev: DateRange) => ({
-        ...prev,
-        [name]: value,
-      }));
-    } else {
-      // セレクトボックスからの変更
-      const value = e.target.value;
-      const [start, end] = value.split('|');
-      setDateRange({ start, end });
-    }
-  };
 
   // データセットの表示/非表示を切り替えるハンドラー
   const handleDataSetToggle = (dataSetTitle: string) => {
@@ -373,75 +347,9 @@ export default function ChartComponent({ title, data, comparisonData }: ChartCom
 
       {/* コントロール */}
       <div className="mb-4 flex flex-wrap items-center gap-4">
-        <div>
-          <label htmlFor="periodType" className="mr-2 text-sm">
-            表示期間:
-          </label>
-          <select
-            id="periodType"
-            value={periodType}
-            onChange={handlePeriodTypeChange}
-            className="rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800"
-          >
-            <option value="daily">日次</option>
-            <option value="weekly">週次</option>
-            <option value="monthly">月次</option>
-          </select>
-        </div>
-
-        <div>
-          <label htmlFor="dateRange" className="mr-2 text-sm">
-            プリセット:
-          </label>
-          <select
-            id="dateRange"
-            value={`${dateRange.start}|${dateRange.end}`}
-            onChange={handleDateRangeChange}
-            className="rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800"
-          >
-            <option value={`${getSixMonthsAgo()}|${formatDateToString(new Date())}`}>
-              過去6ヶ月
-            </option>
-            <option value={`${getThreeMonthsAgo()}|${formatDateToString(new Date())}`}>
-              過去3ヶ月
-            </option>
-            <option value={`${getOneMonthAgo()}|${formatDateToString(new Date())}`}>
-              過去1ヶ月
-            </option>
-          </select>
-        </div>
-
-        <div>
-          <label htmlFor="startDate" className="mr-2 text-sm">
-            開始日:
-          </label>
-          <input
-            type="date"
-            id="startDate"
-            name="start"
-            value={dateRange.start}
-            onChange={handleDateRangeChange}
-            className="rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="endDate" className="mr-2 text-sm">
-            終了日:
-          </label>
-          <input
-            type="date"
-            id="endDate"
-            name="end"
-            value={dateRange.end}
-            onChange={handleDateRangeChange}
-            className="rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800"
-          />
-        </div>
-
         {/* 既存のデータセット選択部分 */}
         {data.length > 1 && (
-          <div className="ml-auto">
+          <div>
             <span className="mr-2 text-sm">データセット:</span>
             <div className="flex flex-wrap gap-2">
               {data.map((dataSet, index) => (
@@ -495,7 +403,7 @@ export default function ChartComponent({ title, data, comparisonData }: ChartCom
                 .filter(dataset => activeDataSets.includes(dataset.title))
                 .map((dataset, index) =>
                   React.createElement(Line as any, {
-                    type: "monotone",
+                    type: "linear",
                     dataKey: dataset.title,
                     name: dataset.title,
                     stroke: colors[index % colors.length],

@@ -260,7 +260,7 @@ const generateFunnelTimeSeriesData = (): GraphSection => {
         { title: '有料転換', data: sampleData.paidConversions },
         { title: '初注文完了', data: sampleData.firstOrders },
       ],
-      subData: generateComparisonData(),
+      subData: [],
     };
   } catch (error) {
     console.error('Error in generateFunnelTimeSeriesData:', error);
@@ -278,7 +278,7 @@ const generateFunnelTimeSeriesData = (): GraphSection => {
         { title: '有料転換', data: sampleData.paidConversions },
         { title: '初注文完了', data: sampleData.firstOrders },
       ],
-      subData: generateComparisonData(),
+      subData: [],
     };
   }
 };
@@ -304,7 +304,7 @@ export const generateFunnelTimeSeriesDataAsync = async (): Promise<GraphSection>
         { title: '有料転換', data: timeSeriesData.paidConversions },
         { title: '初注文完了', data: timeSeriesData.firstOrders },
       ],
-      subData: generateComparisonData(),
+      subData: [],
     };
   } catch (error) {
     console.error('Error fetching funnel time series data:', error);
