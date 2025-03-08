@@ -211,7 +211,7 @@ export default function Home() {
 
       {/* グラフセクション */}
       <div className="mt-8">
-        <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">グラフ</h2>
+        {/* <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">グラフ</h2> */}
         <div className="grid grid-cols-12 gap-4 mb-8">
           {dashboardData.グラフ系.map((section, index) => (
             <div
@@ -242,8 +242,8 @@ export default function Home() {
 
       {/* ファネルセクション */}
       <div className="my-8">
-        <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">全体ファネル</h2>
-        <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm bg-white dark:bg-gray-800">
+        {/* <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">ファネル</h2> */}
+        <div>
           {dashboardData.ファネル系.map((funnel, index) => (
             <FunnelComponent
               key={index}
@@ -253,6 +253,7 @@ export default function Home() {
               }))}
               overallConversionRate={funnel.prevPercent}
               dateRange={dateRange}
+              title={funnel.title}
             />
           ))}
         </div>

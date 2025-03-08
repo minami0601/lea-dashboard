@@ -114,19 +114,19 @@ export default function FunnelComponent({ title, steps, overallConversionRate, d
   };
 
   return (
-    <div className="p-5">
+    <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm bg-white dark:bg-gray-800 mb-10">
       {/* タイトル表示（存在する場合） */}
       {title && (
-        <h3 className="mb-5 text-center text-xl font-bold">{title}</h3>
+        <h3 className="mb-5 text-xl font-bold">{title}</h3>
       )}
 
       {/* 横向きファネル */}
-      <div className="flex items-center justify-center gap-2.5 overflow-x-auto py-2.5">
+      <div className="flex items-center gap-2.5 overflow-x-auto py-2.5">
         {filteredSteps.map((step, index) => (
           <React.Fragment key={index}>
             {/* ステップボックス */}
             <div
-              className="min-w-[150px] rounded-lg border border-gray-300 px-5 py-4 text-center"
+              className="min-w-[170px] rounded-lg border border-gray-300 px-5 py-4 text-center"
             >
               <div className="mb-1 text-base font-bold">
                 {step.title}

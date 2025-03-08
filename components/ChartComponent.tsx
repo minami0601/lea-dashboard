@@ -174,7 +174,7 @@ export default function ChartComponent({ title, data, comparisonData, dateRange,
       periodGroups[periodKey].push(dateStr);
     });
 
-    // 各期間ごとに平均値を計算
+    // 各期間ごとに合計値を計算
     const result: Record<string, Record<string, number>> = {};
 
     Object.entries(periodGroups).forEach(([periodKey, dates]) => {
@@ -184,7 +184,7 @@ export default function ChartComponent({ title, data, comparisonData, dateRange,
         const relevantData = dataset.data.filter(item => dates.includes(item.date));
         if (relevantData.length > 0) {
           const sum = relevantData.reduce((acc, item) => acc + item.value, 0);
-          result[periodKey][dataset.title] = Math.round(sum / relevantData.length);
+          result[periodKey][dataset.title] = sum;
         }
       });
     });
