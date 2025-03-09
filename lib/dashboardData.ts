@@ -1,5 +1,5 @@
-import { addDays, format, subDays } from "date-fns";
-import { fetchFunnelData, fetchFunnelTimeSeriesData, fetchLINEFunnelData } from "./bigqueryClient";
+import { addDays, format } from "date-fns";
+import { fetchFunnelTimeSeriesData, fetchLINEFunnelData } from "./bigqueryClient";
 
 // 比較データの型
 type ComparisonPeriod = "前日比" | "前週比" | "前月比";

@@ -1,93 +1,98 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.4.1/schema.json",
-  "organizeImports": {
-    "enabled": true
-  },
-  "linter": {
-    "enabled": true,
-    "rules": {
-      "recommended": true,
-      "correctness": {
-        "noUnusedVariables": "error",
-        "noUndeclaredVariables": "error",
-        "useExhaustiveDependencies": "error"
-      },
-      "suspicious": {
-        "noExplicitAny": "error",
-        "noConsoleLog": "error",
-        "noImplicitAnyLet": "error"
-      },
-      "style": {
-        "useConst": "error",
-        "useDefaultParameterLast": "error",
-        "noNegationElse": "error"
-      },
-      "complexity": {
-        "noForEach": "off"
-      },
-      "a11y": {
-        "recommended": true
-      },
-      "performance": {
-        "recommended": true
-      },
-      "security": {
-        "recommended": true
-      },
-      "react": {
-        "recommended": true,
-        "noChildrenProp": "warn"
-      },
-      "typescript": {
-        "noUnsafeDeclaration": "error",
-        "noUnnecessaryTypeAssertion": "error",
-        "noBannedTypes": {
-          "level": "error",
-          "options": {
-            "types": ["any"]
-          }
-        },
-        "useConsistentTypeAssertions": {
-          "level": "error",
-          "options": {
-            "prefer": "asType"
-          }
-        }
-      }
-    }
-  },
-  "formatter": {
-    "enabled": true,
-    "indentStyle": "space",
-    "indentWidth": 2,
-    "lineWidth": 100,
-    "ignore": ["node_modules", "dist", ".next"]
-  },
-  "javascript": {
-    "formatter": {
-      "quoteStyle": "double",
-      "trailingComma": "es5",
-      "semicolons": "always",
-      "arrowParentheses": "always"
-    }
-  },
-  "json": {
-    "parser": {
-      "allowComments": true,
-      "allowTrailingCommas": false
-    },
-    "formatter": {
-      "enabled": true
-    }
-  },
-  "files": {
-    "ignore": [
-      "node_modules",
-      "dist",
-      ".next",
-      "public",
-      "coverage",
-      "**/*.min.js"
-    ]
-  }
+	"$schema": "https://biomejs.dev/schemas/1.4.1/schema.json",
+	"organizeImports": {
+		"enabled": true
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true,
+			"correctness": {
+				"noUnusedVariables": "error",
+				"noUndeclaredVariables": "error",
+				"useExhaustiveDependencies": "error"
+			},
+			"suspicious": {
+				"noExplicitAny": "error",
+				"noConsoleLog": "error",
+				"noImplicitAnyLet": "error"
+			},
+			"style": {
+				"useConst": "error",
+				"useDefaultParameterLast": "error",
+				"noNegationElse": "error"
+			},
+			"complexity": {
+				"noForEach": "off"
+			},
+			"a11y": {
+				"recommended": true
+			},
+			"performance": {
+				"recommended": true
+			},
+			"security": {
+				"recommended": true
+			},
+			"react": {
+				"recommended": true,
+				"noChildrenProp": "warn"
+			},
+			"typescript": {
+				"noUnsafeDeclaration": "error",
+				"noUnnecessaryTypeAssertion": "error",
+				"noBannedTypes": {
+					"level": "error",
+					"options": {
+						"types": ["any"]
+					}
+				},
+				"useConsistentTypeAssertions": {
+					"level": "error",
+					"options": {
+						"prefer": "asType"
+					}
+				}
+			},
+			"nursery": {
+				"noUnusedImports": "error",
+				"noUselessLoneBlockStatements": "error",
+				"noUselessTernary": "error"
+			}
+		}
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "space",
+		"indentWidth": 2,
+		"lineWidth": 100,
+		"ignore": ["node_modules", "dist", ".next"]
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "double",
+			"trailingComma": "es5",
+			"semicolons": "always",
+			"arrowParentheses": "always"
+		}
+	},
+	"json": {
+		"parser": {
+			"allowComments": true,
+			"allowTrailingCommas": false
+		},
+		"formatter": {
+			"enabled": true
+		}
+	},
+	"files": {
+		"ignore": [
+			"node_modules",
+			"dist",
+			".next",
+			"public",
+			"coverage",
+			"**/*.min.js"
+		]
+	}
 }

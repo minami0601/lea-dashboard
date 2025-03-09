@@ -4,9 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Dashboard } from '../lib/dashboardData';
 import ChartComponent from '../components/ChartComponent';
 import FunnelComponent from '../components/FunnelComponent';
-import TrafficComponent from '../components/TrafficComponent';
-import ChartComponent2 from '../components/ChartComponent2';
-import { addDays, format, subDays } from 'date-fns';
+import { format, subDays } from 'date-fns';
 
 // サンプルの複数メトリックデータを生成する関数
 function generateMultiMetricData(days: number) {

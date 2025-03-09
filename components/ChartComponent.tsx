@@ -2,17 +2,30 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from 'recharts';
-import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
-import { TooltipProps } from 'recharts/types/component/Tooltip';
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip as ChartTooltip,
+  Legend as ChartLegend,
+  ChartOptions,
+  ChartData,
+  TooltipItem,
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
+
+// Chart.jsの必要なコンポーネントを登録
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  ChartTooltip,
+  ChartLegend
+);
 
 // 時系列データの型
 interface TimeSeriesData {
@@ -48,33 +61,12 @@ interface ChartComponentProps {
   periodType: 'daily' | 'weekly' | 'monthly';
 }
 
-type PeriodType = 'daily' | 'weekly' | 'monthly';
-
 // 日付をYYYY-MM-DD形式に変換する関数
 const formatDateToString = (date: Date): string => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
-};
-
-// 日付関連のユーティリティ関数
-const getSixMonthsAgo = (): string => {
-  const date = new Date();
-  date.setMonth(date.getMonth() - 6);
-  return formatDateToString(date);
-};
-
-const getThreeMonthsAgo = (): string => {
-  const date = new Date();
-  date.setMonth(date.getMonth() - 3);
-  return formatDateToString(date);
-};
-
-const getOneMonthAgo = (): string => {
-  const date = new Date();
-  date.setMonth(date.getMonth() - 1);
-  return formatDateToString(date);
 };
 
 // 指標の色を定義
@@ -264,6 +256,10 @@ export default function ChartComponent({ title, data, comparisonData, dateRange,
 
   const chartData = processData();
 
+  // プロセスされたデータの型を明示的に定義
+  type ChartDataItem = Record<string, any> & { date: string; displayDate?: string };
+  const typedChartData = chartData as ChartDataItem[];
+
   // X軸のフォーマッター
   const formatXAxis = (dateStr: string) => {
     if (periodType === 'daily') {
@@ -305,22 +301,80 @@ export default function ChartComponent({ title, data, comparisonData, dateRange,
     return value.toString();
   };
 
+  // Chart.js用のデータ形式に変換
+  const chartJsData: ChartData<'line'> = {
+    labels: typedChartData.map(d => formatXAxis(d.date)),
+    datasets: data
+      .filter(dataset => activeDataSets.includes(dataset.title))
+      .map((dataset, index) => {
+        const color = colors[index % colors.length];
+        return {
+          label: dataset.title,
+          data: typedChartData.map(d => d[dataset.title] || 0),
+          borderColor: color,
+          backgroundColor: color,
+          pointBackgroundColor: color,
+          pointBorderColor: '#fff',
+          pointHoverBackgroundColor: '#fff',
+          pointHoverBorderColor: color,
+          tension: 0.1,
+        };
+      }),
+  };
+
+  // Chart.jsのオプション設定
+  const chartOptions: ChartOptions<'line'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+        labels: {
+          usePointStyle: true,
+          boxWidth: 10,
+        },
+      },
+      tooltip: {
+        callbacks: {
+          label: function(context: TooltipItem<'line'>) {
+            const value = context.raw as number;
+            const datasetTitle = context.dataset.label || '';
+            return `${datasetTitle}: ${formatValue(value, datasetTitle)}`;
+          },
+          title: function(context) {
+            const dateStr = typedChartData[context[0].dataIndex]?.date;
+            if (!dateStr) return '';
+            return formatTooltipLabel(dateStr);
+          }
+        }
+      },
+    },
+    scales: {
+      x: {
+        title: {
+          display: true,
+          text: '日付',
+        },
+        grid: {
+          display: true,
+        },
+      },
+      y: {
+        title: {
+          display: true,
+          text: title.includes('解約率') ? '解約率 (%)' : '数値',
+        },
+        grid: {
+          display: true,
+        },
+      },
+    },
+  };
+
   // サーバーサイドレンダリング時は何も表示しない
   if (!isClient) {
     return <div className="h-[400px] w-full"></div>;
   }
-
-  // ツールチップのカスタムフォーマッタ
-  const customTooltipFormatter = (value: ValueType, name: NameType) => {
-    if (value === undefined) return [0, ''];
-
-    // 解約率データの場合はパーセント表示
-    if (name && name.toString().includes('解約率')) {
-      return [`${value}%`, name];
-    }
-
-    return [formatValue(Number(value)), name];
-  };
 
   return (
     <div className="chart-container">
@@ -372,49 +426,7 @@ export default function ChartComponent({ title, data, comparisonData, dateRange,
 
       {/* チャート */}
       <div className="h-[400px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          {React.createElement(LineChart, {
-            data: chartData,
-            margin: { top: 20, right: 30, left: 20, bottom: 20 },
-            children: [
-              React.createElement(CartesianGrid, {
-                strokeDasharray: "3 3",
-                key: "grid"
-              }),
-              React.createElement(XAxis, {
-                dataKey: "date",
-                height: 60,
-                tickFormatter: formatXAxis,
-                label: { value: '日付', position: 'insideBottomRight', offset: -10 },
-                key: "xAxis"
-              }),
-              React.createElement(YAxis, {
-                label: { value: title.includes('解約率') ? '解約率 (%)' : '数値', angle: -90, position: 'insideLeft', offset: -5 },
-                tickFormatter: (value: number) => title.includes('解約率') ? `${value}%` : formatValue(value),
-                allowDecimals: false,
-                key: "yAxis"
-              }),
-              React.createElement(Tooltip as any, {
-                formatter: customTooltipFormatter,
-                labelFormatter: formatTooltipLabel,
-                key: "tooltip"
-              }),
-              React.createElement(Legend as any, { key: "legend" }),
-              ...data
-                .filter(dataset => activeDataSets.includes(dataset.title))
-                .map((dataset, index) =>
-                  React.createElement(Line as any, {
-                    type: "linear",
-                    dataKey: dataset.title,
-                    name: dataset.title,
-                    stroke: colors[index % colors.length],
-                    activeDot: { r: 8 },
-                    key: dataset.title
-                  })
-                )
-            ]
-          })}
-        </ResponsiveContainer>
+        <Line data={chartJsData} options={chartOptions} />
       </div>
     </div>
   );

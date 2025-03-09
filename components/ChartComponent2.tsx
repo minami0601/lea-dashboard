@@ -2,17 +2,30 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from 'recharts';
-import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
-import { TooltipProps } from 'recharts/types/component/Tooltip';
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip as ChartTooltip,
+  Legend as ChartLegend,
+  ChartOptions,
+  ChartData,
+  TooltipItem,
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
+
+// Chart.jsの必要なコンポーネントを登録
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  ChartTooltip,
+  ChartLegend
+);
 
 type MultiMetricDataPoint = {
   date: string;
@@ -23,40 +36,14 @@ type MultiMetricDataPoint = {
   firstOrders: number;
 };
 
+type PeriodType = 'daily' | 'weekly' | 'monthly';
+
 type ChartComponentProps = {
   data: MultiMetricDataPoint[];
-};
-
-type PeriodType = 'daily' | 'weekly' | 'monthly';
-type DateRange = {
-  start: string;
-  end: string;
+  periodType: PeriodType; // 親コンポーネントから集計単位を受け取る
 };
 
 type MetricKey = keyof Omit<MultiMetricDataPoint, 'date'>;
-
-type DisplayDataPoint = {
-  date: string;
-  displayDate?: string;
-} & {
-  [K in MetricKey]?: number;
-};
-
-// 日付をYYYY-MM-DD形式に変換する関数
-const formatDateToString = (date: Date): string => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-
-// 半年前の日付を取得する関数
-const getSixMonthsAgo = (): string => {
-  const today = new Date();
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setMonth(today.getMonth() - 6);
-  return formatDateToString(sixMonthsAgo);
-};
 
 // 指標の設定
 const metrics = [
@@ -67,33 +54,14 @@ const metrics = [
   { key: 'firstOrders' as MetricKey, name: '初注文数', color: '#0088fe' },
 ];
 
-export default function ChartComponent({ data }: ChartComponentProps) {
+export default function ChartComponent({ data, periodType }: ChartComponentProps) {
   const [isClient, setIsClient] = useState(false);
-  const [periodType, setPeriodType] = useState<PeriodType>('weekly');
-  const [dateRange, setDateRange] = useState<DateRange>({
-    start: getSixMonthsAgo(),
-    end: formatDateToString(new Date()),
-  });
   const [activeMetrics, setActiveMetrics] = useState<MetricKey[]>(metrics.map(m => m.key));
 
   // マウント後にクライアントサイドであることを確認
   useEffect(() => {
     setIsClient(true);
   }, []);
-
-  // 期間タイプの変更ハンドラー
-  const handlePeriodTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setPeriodType(e.target.value as PeriodType);
-  };
-
-  // 日付範囲の変更ハンドラー
-  const handleDateRangeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setDateRange((prev: DateRange) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
 
   // 指標の表示/非表示を切り替えるハンドラー
   const handleMetricToggle = (metricKey: MetricKey) => {
@@ -106,40 +74,16 @@ export default function ChartComponent({ data }: ChartComponentProps) {
     });
   };
 
-  // データのフィルタリング
-  const filteredData = data.filter(item => {
-    const itemDate = new Date(item.date);
-    const startDate = new Date(dateRange.start);
-    const endDate = new Date(dateRange.end);
-    return itemDate >= startDate && itemDate <= endDate;
-  });
-
-  // 表示用のデータ加工
-  const getDisplayData = (): DisplayDataPoint[] => {
-    // 日次表示の場合
+  // 集計単位に応じたデータの処理
+  const processedData = React.useMemo(() => {
     if (periodType === 'daily') {
-      return filteredData.map(item => {
-        const date = new Date(item.date);
-        const result: DisplayDataPoint = {
-          date: item.date,
-          displayDate: `${date.getMonth() + 1}/${date.getDate()}`
-        };
-
-        // 各指標の値をコピー
-        metrics.forEach(metric => {
-          result[metric.key] = item[metric.key];
-        });
-
-        return result;
-      }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    }
-
-    // 週次表示用のデータ加工
-    if (periodType === 'weekly') {
-      // 週ごとにデータをグループ化
+      // 日次データはそのまま使用
+      return data;
+    } else if (periodType === 'weekly') {
+      // 週次データの集計
       const weeklyData: Record<string, MultiMetricDataPoint[]> = {};
 
-      filteredData.forEach(item => {
+      data.forEach(item => {
         const date = new Date(item.date);
         // 週の始まり（日曜日）を計算
         const day = date.getDay();
@@ -156,32 +100,26 @@ export default function ChartComponent({ data }: ChartComponentProps) {
         weeklyData[weekKey].push(item);
       });
 
-      // 週ごとの平均値を計算
+      // 週ごとの集計データを作成
       return Object.entries(weeklyData).map(([weekStart, items]) => {
-        const result: DisplayDataPoint = {
-          date: weekStart,
-          displayDate: `${new Date(weekStart).getMonth() + 1}/${new Date(weekStart).getDate()}週`
-        };
+        const result: any = { date: weekStart };
 
-        // 各指標の平均を計算
+        // 各指標の合計を計算
         metrics.forEach(metric => {
-          const sum = items.reduce((acc: number, item) => {
-            return acc + item[metric.key];
-          }, 0);
-          result[metric.key] = Math.round(sum / items.length);
+          const sum = items.reduce((acc, item) => acc + item[metric.key], 0);
+          result[metric.key] = sum;
         });
 
         return result;
       }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    }
-
-    // 月次表示の場合
-    if (periodType === 'monthly') {
+    } else if (periodType === 'monthly') {
+      // 月次データの集計
       const monthlyData: Record<string, MultiMetricDataPoint[]> = {};
 
-      filteredData.forEach(item => {
+      data.forEach(item => {
         const date = new Date(item.date);
-        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        // 月の始めの日付をキーとして使用
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
 
         if (!monthlyData[monthKey]) {
           monthlyData[monthKey] = [];
@@ -190,112 +128,128 @@ export default function ChartComponent({ data }: ChartComponentProps) {
         monthlyData[monthKey].push(item);
       });
 
-      return Object.entries(monthlyData).map(([monthKey, items]) => {
-        const [year, month] = monthKey.split('-');
-        const result: DisplayDataPoint = {
-          date: `${year}-${month}-01`,
-          displayDate: `${year}/${month}`
-        };
+      // 月ごとの集計データを作成
+      return Object.entries(monthlyData).map(([monthStart, items]) => {
+        const result: any = { date: monthStart };
 
-        // 各指標の平均を計算
+        // 各指標の合計を計算
         metrics.forEach(metric => {
-          const sum = items.reduce((acc: number, item) => {
-            return acc + item[metric.key];
-          }, 0);
-          result[metric.key] = Math.round(sum / items.length);
+          const sum = items.reduce((acc, item) => acc + item[metric.key], 0);
+          result[metric.key] = sum;
         });
 
         return result;
       }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     }
 
-    return filteredData;
+    return data;
+  }, [data, periodType]);
+
+  // Chart.js用のデータ形式に変換
+  const chartData: ChartData<'line'> = {
+    labels: processedData.map(d => formatDate(d.date)),
+    datasets: metrics
+      .filter(metric => activeMetrics.includes(metric.key))
+      .map(metric => ({
+        label: metric.name,
+        data: processedData.map(d => d[metric.key] || 0),
+        borderColor: metric.color,
+        backgroundColor: metric.color,
+        pointBackgroundColor: metric.color,
+        pointBorderColor: '#fff',
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: metric.color,
+        tension: 0.1,
+      })),
   };
 
-  const displayData = getDisplayData();
+  // Chart.jsのオプション設定
+  const chartOptions: ChartOptions<'line'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+        labels: {
+          usePointStyle: true,
+          boxWidth: 10,
+        },
+      },
+      tooltip: {
+        callbacks: {
+          label: function(context: TooltipItem<'line'>) {
+            const value = context.raw as number;
+            return `${context.dataset.label}: ${value.toLocaleString()}`;
+          },
+          title: function(context) {
+            const dateStr = processedData[context[0].dataIndex]?.date;
+            if (!dateStr) return '';
+            return formatTooltipLabel(dateStr);
+          }
+        }
+      },
+    },
+    scales: {
+      x: {
+        title: {
+          display: true,
+          text: '日付',
+        },
+        grid: {
+          display: true,
+        },
+      },
+      y: {
+        title: {
+          display: true,
+          text: '数値',
+        },
+        grid: {
+          display: true,
+        },
+      },
+    },
+  };
 
   // サーバーサイドレンダリング時は何も表示しない
   if (!isClient) {
     return <div className="h-[400px] w-full"></div>;
   }
 
-  // X軸のフォーマッター
-  const formatXAxis = (dateStr: string) => {
+  // 日付をYYYY-MM-DD形式に変換する関数
+  function formatDateToString(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  // 日付フォーマッター - 集計単位に応じて変更
+  function formatDate(dateStr: string) {
+    const d = new Date(dateStr);
     if (periodType === 'daily') {
-      const d = new Date(dateStr);
       return `${d.getMonth() + 1}/${d.getDate()}`;
     } else if (periodType === 'weekly') {
-      const d = new Date(dateStr);
       return `${d.getMonth() + 1}/${d.getDate()}週`;
     } else {
-      const d = new Date(dateStr);
       return `${d.getFullYear()}/${d.getMonth() + 1}`;
     }
-  };
+  }
 
-  // ツールチップのラベルフォーマッター
-  const formatTooltipLabel = (value: string) => {
+  // ツールチップのラベルフォーマッター - 集計単位に応じて変更
+  function formatTooltipLabel(value: string) {
     const d = new Date(value);
     if (periodType === 'daily') {
       return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
     } else if (periodType === 'weekly') {
       return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日週`;
+    } else {
+      return `${d.getFullYear()}年${d.getMonth() + 1}月`;
     }
-    return `${d.getFullYear()}年${d.getMonth() + 1}月`;
-  };
-
-  // 値のフォーマッター
-  const formatValue = (value: number) => {
-    return value.toLocaleString();
-  };
-
-  const customTooltipFormatter = (value: number, name: string) => {
-    const metric = metrics.find(m => m.key === name);
-    return [formatValue(value), metric ? metric.name : name];
-  };
+  }
 
   return (
     <div>
-      <div className="mb-5 flex flex-wrap items-center gap-5">
-        <div>
-          <label htmlFor="periodType" className="mr-2.5">表示期間:</label>
-          <select
-            id="periodType"
-            value={periodType}
-            onChange={handlePeriodTypeChange}
-            className="rounded border border-gray-300 px-2.5 py-1.5"
-          >
-            <option value="daily">日次</option>
-            <option value="weekly">週次</option>
-            <option value="monthly">月次</option>
-          </select>
-        </div>
-
-        <div>
-          <label htmlFor="startDate" className="mr-2.5">開始日:</label>
-          <input
-            type="date"
-            id="startDate"
-            name="start"
-            value={dateRange.start}
-            onChange={handleDateRangeChange}
-            className="rounded border border-gray-300 px-2.5 py-1.5"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="endDate" className="mr-2.5">終了日:</label>
-          <input
-            type="date"
-            id="endDate"
-            name="end"
-            value={dateRange.end}
-            onChange={handleDateRangeChange}
-            className="rounded border border-gray-300 px-2.5 py-1.5"
-          />
-        </div>
-      </div>
-
       <div className="mb-5">
         <div className="mb-2.5">表示する指標:</div>
         <div className="flex flex-wrap gap-4">
@@ -318,48 +272,7 @@ export default function ChartComponent({ data }: ChartComponentProps) {
       </div>
 
       <div className="h-[400px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          {React.createElement(LineChart, {
-            data: displayData,
-            margin: {
-              top: 20,
-              right: 30,
-              left: 20,
-              bottom: 20,
-            },
-            children: [
-              React.createElement(CartesianGrid, { strokeDasharray: "3 3", key: "grid" }),
-              React.createElement(XAxis, {
-                dataKey: "date",
-                tickFormatter: formatXAxis,
-                label: { value: '日付', position: 'insideBottomRight', offset: -10 },
-                key: "xAxis"
-              }),
-              React.createElement(YAxis, {
-                label: { value: '数値', angle: -90, position: 'insideLeft', offset: -5 },
-                key: "yAxis"
-              }),
-              React.createElement(Tooltip as any, {
-                formatter: customTooltipFormatter,
-                labelFormatter: formatTooltipLabel,
-                key: "tooltip"
-              }),
-              React.createElement(Legend as any, { key: "legend" }),
-              ...metrics
-                .filter(metric => activeMetrics.includes(metric.key))
-                .map(metric =>
-                  React.createElement(Line as any, {
-                    type: "monotone",
-                    dataKey: metric.key,
-                    name: metric.name,
-                    stroke: metric.color,
-                    activeDot: { r: 8 },
-                    key: metric.key
-                  })
-                )
-            ]
-          })}
-        </ResponsiveContainer>
+        <Line data={chartData} options={chartOptions} />
       </div>
     </div>
   );

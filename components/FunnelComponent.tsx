@@ -18,7 +18,7 @@ type FunnelStep = {
 type FunnelComponentProps = {
   title?: string;
   steps: FunnelStep[];
-  overallConversionRate?: number;
+  overallConversionRate: number | undefined;
   dateRange?: {
     start: string;
     end: string;
@@ -33,26 +33,13 @@ const formatDateToString = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
-// 日付関連のユーティリティ関数
-const getSixMonthsAgo = (): string => {
-  const date = new Date();
-  date.setMonth(date.getMonth() - 6);
-  return formatDateToString(date);
-};
-
 const getThreeMonthsAgo = (): string => {
   const date = new Date();
   date.setMonth(date.getMonth() - 3);
   return formatDateToString(date);
 };
 
-const getOneMonthAgo = (): string => {
-  const date = new Date();
-  date.setMonth(date.getMonth() - 1);
-  return formatDateToString(date);
-};
-
-export default function FunnelComponent({ title, steps, overallConversionRate, dateRange }: FunnelComponentProps) {
+export default function FunnelComponent({ title, steps, dateRange }: FunnelComponentProps) {
   // 期間選択のための状態
   const [selectedDateRange, setSelectedDateRange] = useState<{
     start: string;
