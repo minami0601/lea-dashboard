@@ -53,11 +53,6 @@
 						"prefer": "asType"
 					}
 				}
-			},
-			"nursery": {
-				"noUnusedImports": "error",
-				"noUselessLoneBlockStatements": "error",
-				"noUselessTernary": "error"
 			}
 		}
 	},

@@ -1,4 +1,4 @@
-import { BigQuery } from "@google-cloud/bigquery";
+import { BigQuery, BigQueryOptions } from "@google-cloud/bigquery";
 
 // BigQueryクライアントの初期化
 // 常にlea-for-marketplace-prodプロジェクトに接続
@@ -7,7 +7,7 @@ const keyFilePath = "./key/prod.json";
 const useAdc = process.env.BIGQUERY_USE_ADC === "true";
 
 // クライアント初期化オプション
-const options: any = {
+const options: BigQueryOptions = {
   projectId: projectId,
 };
 
@@ -19,15 +19,26 @@ if (!useAdc && keyFilePath) {
 export const bigqueryClient = new BigQuery(options);
 
 // ファネルデータを取得する関数
-export async function fetchFunnelData() {
+export async function fetchFunnelData(
+  startDateStr: string = '2024-01-01',
+  endDateStr: string | null = null,
+) {
+  // 終了日が指定されていない場合は、今日の日付を使用
+  const endAt = endDateStr || new Date().toISOString().split("T")[0]; // 今日の日付（YYYY-MM-DD形式）
+  const startAt = startDateStr; // 明示的に変数に代入
+
+  // テーブルサフィックス用に日付をYYYYMMDD形式に変換
+  const startSuffix = startAt.replace(/-/g, '');
+  const endSuffix = endAt.replace(/-/g, '');
+
   const query = `
     WITH day_list AS (
-      -- 2024-01-01 から 現在日 (JST) までの連続日付を生成
+      -- ${startAt} から ${endAt} までの連続日付を生成
       SELECT day AS event_date
       FROM UNNEST(
         GENERATE_DATE_ARRAY(
-          DATE('2024-01-01'),
-          CURRENT_DATE('Asia/Tokyo'),
+          DATE('${startAt}'),
+          DATE('${endAt}'),
           INTERVAL 1 DAY
         )
       ) AS day
@@ -39,17 +50,17 @@ export async function fetchFunnelData() {
         DATE(subscription_date, 'Asia/Tokyo') AS dt_jst,
         COUNT(*) AS new_reg_count
       FROM \`lea-for-marketplace-prod.lea_admin_user.admin_user_data\`
-      WHERE subscription_date >= TIMESTAMP('2024-01-01 00:00:00', 'Asia/Tokyo')
+      WHERE subscription_date >= TIMESTAMP('${startAt} 00:00:00', 'Asia/Tokyo')
       GROUP BY dt_jst
     ),
 
-    -- (1) ユーザーテーブルの集計: 有料転換数 (conv)
+    -- (1) ユーザーテーブルの集計: 有料化数 (conv)
     conv AS (
       SELECT
         DATE(conversion_date, 'Asia/Tokyo') AS dt_jst,
         COUNT(*) AS paid_conversion_count
       FROM \`lea-for-marketplace-prod.lea_admin_user.admin_user_data\`
-      WHERE conversion_date >= TIMESTAMP('2024-01-01 00:00:00', 'Asia/Tokyo')
+      WHERE conversion_date >= TIMESTAMP('${startAt} 00:00:00', 'Asia/Tokyo')
       GROUP BY dt_jst
     ),
 
@@ -59,7 +70,7 @@ export async function fetchFunnelData() {
         DATE(first_order_date, 'Asia/Tokyo') AS dt_jst,
         COUNT(*) AS first_order_count
       FROM \`lea-for-marketplace-prod.lea_admin_user.admin_user_data\`
-      WHERE first_order_date >= TIMESTAMP('2024-01-01 00:00:00', 'Asia/Tokyo')
+      WHERE first_order_date >= TIMESTAMP('${startAt} 00:00:00', 'Asia/Tokyo')
       GROUP BY dt_jst
     ),
 
@@ -71,7 +82,7 @@ export async function fetchFunnelData() {
       FROM \`lea-for-marketplace-prod.analytics_385732862.events_*\`
       WHERE
         event_name = 'page_view'
-        AND _TABLE_SUFFIX BETWEEN '20241201' AND FORMAT_DATE('%Y%m%d', CURRENT_DATE('Asia/Tokyo'))
+        AND _TABLE_SUFFIX BETWEEN '${startSuffix}' AND FORMAT_DATE('%Y%m%d', DATE('${endAt}'))
         AND (
           SELECT ep.value.string_value
           FROM UNNEST(event_params) AS ep
@@ -88,7 +99,7 @@ export async function fetchFunnelData() {
       FROM \`lea-for-marketplace-prod.analytics_385792904.events_*\`
       WHERE
         event_name = 'page_view'
-        AND _TABLE_SUFFIX BETWEEN '20241201' AND FORMAT_DATE('%Y%m%d', CURRENT_DATE('Asia/Tokyo'))
+        AND _TABLE_SUFFIX BETWEEN '${startSuffix}' AND FORMAT_DATE('%Y%m%d', DATE('${endAt}'))
       GROUP BY dt_jst
     )
 
@@ -119,10 +130,13 @@ export async function fetchFunnelData() {
 }
 
 // ファネル時系列データを取得する関数
-export async function fetchFunnelTimeSeriesData() {
+export async function fetchFunnelTimeSeriesData(
+  startDateStr: string = '2024-01-01',
+  endDateStr: string | null = null,
+) {
   // 同じクエリを使用してファネルの時系列データを取得
   try {
-    const rows = await fetchFunnelData();
+    const rows = await fetchFunnelData(startDateStr, endDateStr);
 
     if (!rows || rows.length === 0) {
       console.error("ファネル時系列データが取得できませんでした");
@@ -170,16 +184,15 @@ export async function fetchFunnelTimeSeriesData() {
 
 // LINE起点のファネルデータを取得する関数
 export async function fetchLINEFunnelData(
-	startDateStr?: string,
-	endDateStr?: string,
+	startDateStr: string = '2024-01-01',
+	endDateStr: string | null = null,
 ) {
-	// デフォルトの日付範囲
-	const startAt = startDateStr || "2023-01-01"; // 2024-01-01から2023-01-01に変更
-	const endAt = endDateStr || new Date().toISOString().split("T")[0]; // 今日の日付（YYYY-MM-DD形式）
+	// 終了日が指定されていない場合は、今日の日付を使用
+	const endDate = endDateStr || new Date().toISOString().split("T")[0]; // 今日の日付（YYYY-MM-DD形式）
 
 	const query = `
-DECLARE startAt DATE DEFAULT DATE('${startAt}');
-DECLARE endAt   DATE DEFAULT DATE('${endAt}');
+DECLARE startAt DATE DEFAULT DATE('${startDateStr}');
+DECLARE endAt   DATE DEFAULT DATE('${endDate}');
 
 -- Lea Market ファネル分析クエリ（修正版）
 -- (LINE登録 → ショップアクセス → カート追加 → 注文 → 2回目 → 3回目)
@@ -223,7 +236,7 @@ daily_actions AS (
     -- ショップアクセス
     COUNT(DISTINCT CASE
       WHEN JSON_EXTRACT_SCALAR(data, '$.type') = 'access'
-       AND JSON_EXTRACT_SCALAR(data, '$.pageMatchedPath') = '/products/:productUid'
+      AND JSON_EXTRACT_SCALAR(data, '$.pageMatchedPath') = '/products/:productUid'
       THEN JSON_EXTRACT_SCALAR(data, '$.userId')
       ELSE NULL
     END) AS productUniqueUsers,

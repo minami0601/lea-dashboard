@@ -317,7 +317,7 @@ export default function ChartComponent({ title, data, comparisonData, dateRange,
           pointBorderColor: '#fff',
           pointHoverBackgroundColor: '#fff',
           pointHoverBorderColor: color,
-          tension: 0.1,
+          tension: 0,
         };
       }),
   };

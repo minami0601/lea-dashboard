@@ -297,10 +297,13 @@ const generateTrafficSourceData = (): TrafficData[] => {
 };
 
 // ファネルデータを生成
-export const generateFunnelData = async (): Promise<FunnelSection> => {
+export const generateFunnelData = async (
+	startDateStr: string = '2024-01-01',
+	endDateStr: string | null = null
+): Promise<FunnelSection> => {
 	try {
 		// fetchFunnelTimeSeriesDataを使用して時系列データを取得
-		const timeSeriesData = await fetchAndProcessFunnelData();
+		const timeSeriesData = await fetchAndProcessFunnelData(startDateStr, endDateStr);
 
 		if (!timeSeriesData) {
 			throw new Error("ファネル時系列データが取得できませんでした。");
@@ -353,10 +356,13 @@ export const generateFunnelData = async (): Promise<FunnelSection> => {
 };
 
 // LINEファネルデータを生成
-export const generateLINEFunnelData = async (): Promise<FunnelSection> => {
+export const generateLINEFunnelData = async (
+	startDateStr: string = '2024-01-01',
+	endDateStr: string | null = null
+): Promise<FunnelSection> => {
 	try {
 		// BigQueryからLINE起点のファネルデータを取得
-		const rows = await fetchLINEFunnelData();
+		const rows = await fetchLINEFunnelData(startDateStr, endDateStr);
 
 		if (!rows || rows.length === 0) {
 			throw new Error("LINE起点のファネルデータが取得できませんでした。");
@@ -437,10 +443,13 @@ export const generateLINEFunnelData = async (): Promise<FunnelSection> => {
 };
 
 // ファネルデータを一度だけ取得する共通関数
-export const fetchAndProcessFunnelData = async () => {
+export const fetchAndProcessFunnelData = async (
+	startDateStr: string = '2024-01-01',
+	endDateStr: string | null = null
+) => {
 	try {
 		// BigQueryからデータを一度だけ取得
-		const timeSeriesData = await fetchFunnelTimeSeriesData();
+		const timeSeriesData = await fetchFunnelTimeSeriesData(startDateStr, endDateStr);
 
 		if (!timeSeriesData) {
 			console.error("ファネル時系列データが取得できませんでした。");
@@ -454,13 +463,16 @@ export const fetchAndProcessFunnelData = async () => {
 };
 
 // ダッシュボード全体のデータを生成
-export const generateDashboardData = async (): Promise<Dashboard> => {
+export const generateDashboardData = async (
+	startDateStr: string = '2024-01-01',
+	endDateStr: string | null = null
+): Promise<Dashboard> => {
 	try {
 		// 常にBigQueryからデータを取得
 		console.log("BigQueryからデータを取得します");
 
 		// ファネル時系列データを取得
-		const timeSeriesData = await fetchAndProcessFunnelData();
+		const timeSeriesData = await fetchAndProcessFunnelData(startDateStr, endDateStr);
 
 		if (!timeSeriesData) {
 			throw new Error("ファネル時系列データが取得できませんでした。");
@@ -487,14 +499,12 @@ export const generateDashboardData = async (): Promise<Dashboard> => {
 			subData: generateComparisonData(),
 		};
 
-		// 通常のファネルデータを取得
-		const standardFunnelData = await generateFunnelData();
-
-		// LINE起点のファネルデータを取得
-		const lineFunnelData = await generateLINEFunnelData();
+		// ファネルのデータを生成
+		const funnelData = await generateFunnelData(startDateStr, endDateStr);
+		const lineFunnelData = await generateLINEFunnelData(startDateStr, endDateStr);
 
 		// ファネルデータを配列にまとめる
-		const allFunnelData = [standardFunnelData, lineFunnelData];
+		const allFunnelData = [funnelData, lineFunnelData];
 
 		return {
 			グラフ系: [
