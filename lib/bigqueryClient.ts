@@ -1,10 +1,10 @@
-import { BigQuery } from '@google-cloud/bigquery';
+import { BigQuery } from "@google-cloud/bigquery";
 
 // BigQueryクライアントの初期化
 // 常にlea-for-marketplace-prodプロジェクトに接続
-const projectId = 'lea-for-marketplace-prod';
-const keyFilePath = './key/prod.json';
-const useAdc = process.env.BIGQUERY_USE_ADC === 'true';
+const projectId = "lea-for-marketplace-prod";
+const keyFilePath = "./key/prod.json";
+const useAdc = process.env.BIGQUERY_USE_ADC === "true";
 
 // クライアント初期化オプション
 const options: any = {
@@ -113,7 +113,7 @@ export async function fetchFunnelData() {
     const [rows] = await bigqueryClient.query(query);
     return rows;
   } catch (error) {
-    console.error('Error fetching funnel data from BigQuery:', error);
+    console.error("Error fetching funnel data from BigQuery:", error);
     throw error;
   }
 }
@@ -125,34 +125,34 @@ export async function fetchFunnelTimeSeriesData() {
     const rows = await fetchFunnelData();
 
     if (!rows || rows.length === 0) {
-      console.error('ファネル時系列データが取得できませんでした');
+      console.error("ファネル時系列データが取得できませんでした");
       return null;
     }
 
     // 各ステージごとの時系列データを作成
-    const hpViews = rows.map(row => ({
+    const hpViews = rows.map((row) => ({
       date: row.event_date.value || row.event_date,
-      value: Number(row.unique_users_3)
+      value: Number(row.unique_users_3),
     }));
 
-    const memberPageViews = rows.map(row => ({
+    const memberPageViews = rows.map((row) => ({
       date: row.event_date.value || row.event_date,
-      value: Number(row.unique_users_2)
+      value: Number(row.unique_users_2),
     }));
 
-    const registrations = rows.map(row => ({
+    const registrations = rows.map((row) => ({
       date: row.event_date.value || row.event_date,
-      value: Number(row.sub)
+      value: Number(row.sub),
     }));
 
-    const paidConversions = rows.map(row => ({
+    const paidConversions = rows.map((row) => ({
       date: row.event_date.value || row.event_date,
-      value: Number(row.conv)
+      value: Number(row.conv),
     }));
 
-    const firstOrders = rows.map(row => ({
+    const firstOrders = rows.map((row) => ({
       date: row.event_date.value || row.event_date,
-      value: Number(row.fst)
+      value: Number(row.fst),
     }));
 
     return {
@@ -160,101 +160,158 @@ export async function fetchFunnelTimeSeriesData() {
       memberPageViews,
       registrations,
       paidConversions,
-      firstOrders
+      firstOrders,
     };
   } catch (error) {
-    console.error('Error fetching funnel time series data:', error);
+    console.error("Error fetching funnel time series data:", error);
     return null;
   }
 }
 
 // LINE起点のファネルデータを取得する関数
-export async function fetchLINEFunnelData(startDateStr?: string, endDateStr?: string) {
-  // デフォルトの日付範囲
-  const startAt = startDateStr || '2024-01-01';
-  const endAt = endDateStr || new Date().toISOString().split('T')[0]; // 今日の日付（YYYY-MM-DD形式）
+export async function fetchLINEFunnelData(
+	startDateStr?: string,
+	endDateStr?: string,
+) {
+	// デフォルトの日付範囲
+	const startAt = startDateStr || "2023-01-01"; // 2024-01-01から2023-01-01に変更
+	const endAt = endDateStr || new Date().toISOString().split("T")[0]; // 今日の日付（YYYY-MM-DD形式）
 
-  const query = `
-    -- Lea Market ファネル分析クエリ（軽量化版）
-    -- このクエリはファネルデータ (LINE登録 → ショップアクセス → カート追加 → 注文 → 2回目 → 3回目) のみを取得します
-    -- adminUserUidごとの区分けはせず、全体の傾向を把握します
+	const query = `
+DECLARE startAt DATE DEFAULT DATE('${startAt}');
+DECLARE endAt   DATE DEFAULT DATE('${endAt}');
 
-    -- 現在の日付と指定の期間を使用
-    DECLARE startAt DATE DEFAULT DATE('${startAt}');
-    DECLARE endAt DATE DEFAULT DATE('${endAt}');
+-- Lea Market ファネル分析クエリ（修正版）
+-- (LINE登録 → ショップアクセス → カート追加 → 注文 → 2回目 → 3回目)
 
-    WITH date_range AS (
-        SELECT DATE(startAt) + INTERVAL x DAY as date
-        FROM UNNEST(GENERATE_ARRAY(0, DATE_DIFF(DATE(endAt), DATE(startAt), DAY))) as x
-    ),
-    -- LINE有効友達数の集計（日次の新規追加数）
-    user_count_by_date AS (
-        SELECT
-            DATE(TIMESTAMP(JSON_EXTRACT_SCALAR(data, '$.createdAt'))) AS date,
-            COUNT(DISTINCT JSON_EXTRACT_SCALAR(data, '$.userUid')) AS new_users_added
-        FROM
-            \`lea-for-marketplace-prod.firestore_export_user.users_raw_changelog\`
-        WHERE
-            JSON_EXTRACT_SCALAR(data, '$.isBlock') = 'false' AND
-            JSON_EXTRACT_SCALAR(data, '$.isBlacklist') = 'false' AND
-            TIMESTAMP(JSON_EXTRACT_SCALAR(data, '$.createdAt')) BETWEEN TIMESTAMP(startAt) AND TIMESTAMP(DATE_ADD(endAt, INTERVAL 1 DAY))
-        GROUP BY date
-    ),
-    -- 必要なアクションの日次集計 (ショップアクセス、カート追加、注文のみ)
-    daily_actions AS (
-        SELECT
-            PARSE_DATE('%Y-%m-%d', FORMAT_TIMESTAMP('%Y-%m-%d', TIMESTAMP_SECONDS(CAST(JSON_EXTRACT_SCALAR(data, '$.createdAt._seconds') AS INT64)))) AS date,
-            -- 各種アクション集計（ユニークユーザー数のみ）
-            COUNT(DISTINCT CASE WHEN JSON_EXTRACT_SCALAR(data, '$.type') = 'access' AND JSON_EXTRACT_SCALAR(data, '$.pageMatchedPath') = '/products/:productUid' THEN JSON_EXTRACT_SCALAR(data, '$.userId') ELSE NULL END) AS productUniqueUsers,
-            COUNT(DISTINCT CASE WHEN JSON_EXTRACT_SCALAR(data, '$.type') = 'cart' THEN JSON_EXTRACT_SCALAR(data, '$.userId') ELSE NULL END) AS cartUniqueUsers,
-            COUNT(DISTINCT CASE WHEN JSON_EXTRACT_SCALAR(data, '$.type') = 'order' THEN JSON_EXTRACT_SCALAR(data, '$.userId') ELSE NULL END) AS orderUniqueUsers
-        FROM \`lea-for-marketplace-prod.lea_for_marketplace_prod_userActionLog.userActionLog_raw_latest\`
-        WHERE CAST(JSON_EXTRACT_SCALAR(data, '$.createdAt._seconds') AS INT64) BETWEEN UNIX_SECONDS(TIMESTAMP(startAt)) AND UNIX_SECONDS(TIMESTAMP(DATE_ADD(endAt, INTERVAL 1 DAY)))
-        GROUP BY date
-    ),
-    -- 期間全体でのユーザーごとの注文回数集計（リピート注文を適切に把握するため）
-    user_order_count AS (
-        SELECT
-            JSON_EXTRACT_SCALAR(data, '$.userId') AS userId,
-            COUNT(*) AS order_count
-        FROM \`lea-for-marketplace-prod.lea_for_marketplace_prod_userActionLog.userActionLog_raw_latest\`
-        WHERE
-            JSON_EXTRACT_SCALAR(data, '$.type') = 'order'
-            AND CAST(JSON_EXTRACT_SCALAR(data, '$.createdAt._seconds') AS INT64) BETWEEN UNIX_SECONDS(TIMESTAMP(startAt)) AND UNIX_SECONDS(TIMESTAMP(DATE_ADD(endAt, INTERVAL 1 DAY)))
-        GROUP BY userId
-    ),
-    -- 日付ごとのリピート注文ユーザー数
-    repeater_counts AS (
-        SELECT
-            dr.date,
-            COUNT(DISTINCT CASE WHEN uoc.order_count >= 2 THEN uoc.userId ELSE NULL END) AS repeat_2_plus,
-            COUNT(DISTINCT CASE WHEN uoc.order_count >= 3 THEN uoc.userId ELSE NULL END) AS repeat_3_plus
-        FROM date_range dr
-        CROSS JOIN user_order_count uoc
-        GROUP BY dr.date
-    )
+WITH date_range AS (
+  -- 指定期間の日付リストを生成
+  SELECT DATE(startAt) + INTERVAL x DAY AS date
+  FROM UNNEST(GENERATE_ARRAY(
+    0,
+    DATE_DIFF(DATE(endAt), DATE(startAt), DAY)
+  )) AS x
+),
 
-    -- 最終的に全データを結合
-    SELECT
-        dr.date,
-        COALESCE(uc.new_users_added, 0) AS newUsersNum, -- LINE登録（新規追加数）
-        COALESCE(da.productUniqueUsers, 0) AS productUniqueUsers, -- ショップアクセス
-        COALESCE(da.cartUniqueUsers, 0) AS cartUniqueUsers, -- カート追加
-        COALESCE(da.orderUniqueUsers, 0) AS orderUniqueUsers, -- 注文
-        COALESCE(rc.repeat_2_plus, 0) AS repeat2Plus, -- 2回目
-        COALESCE(rc.repeat_3_plus, 0) AS repeat3Plus, -- 3回目
-    FROM date_range dr
-    LEFT JOIN user_count_by_date uc ON dr.date = uc.date
-    LEFT JOIN daily_actions da ON dr.date = da.date
-    LEFT JOIN repeater_counts rc ON dr.date = rc.date
-    ORDER BY dr.date;
-  `;
+-- (1) LINE有効友達数の日次集計（新規追加数のみ）
+user_count_by_date AS (
+  SELECT
+    DATE(TIMESTAMP(JSON_EXTRACT_SCALAR(data, '$.createdAt'))) AS date,
+    COUNT(DISTINCT JSON_EXTRACT_SCALAR(data, '$.userUid')) AS new_users_added
+  FROM \`lea-for-marketplace-prod.firestore_export_user.users_raw_changelog\`
+  WHERE
+    JSON_EXTRACT_SCALAR(data, '$.isBlock') = 'false'
+    AND JSON_EXTRACT_SCALAR(data, '$.isBlacklist') = 'false'
+    AND TIMESTAMP(JSON_EXTRACT_SCALAR(data, '$.createdAt'))
+        BETWEEN TIMESTAMP(startAt)
+        AND TIMESTAMP(DATE_ADD(endAt, INTERVAL 1 DAY))
+  GROUP BY date
+),
 
-  try {
-    const [rows] = await bigqueryClient.query(query);
-    return rows;
-  } catch (error) {
-    console.error('Error fetching LINE funnel data from BigQuery:', error);
-    throw error;
-  }
+-- (2) 日次アクション (ショップアクセス / カート追加 / 注文) の集計
+daily_actions AS (
+  SELECT
+    PARSE_DATE(
+      '%Y-%m-%d',
+      FORMAT_TIMESTAMP('%Y-%m-%d',
+        TIMESTAMP_SECONDS(
+          CAST(JSON_EXTRACT_SCALAR(data, '$.createdAt._seconds') AS INT64)
+        )
+      )
+    ) AS date,
+
+    -- ショップアクセス
+    COUNT(DISTINCT CASE
+      WHEN JSON_EXTRACT_SCALAR(data, '$.type') = 'access'
+       AND JSON_EXTRACT_SCALAR(data, '$.pageMatchedPath') = '/products/:productUid'
+      THEN JSON_EXTRACT_SCALAR(data, '$.userId')
+      ELSE NULL
+    END) AS productUniqueUsers,
+
+    -- カート追加
+    COUNT(DISTINCT CASE
+      WHEN JSON_EXTRACT_SCALAR(data, '$.type') = 'cart'
+      THEN JSON_EXTRACT_SCALAR(data, '$.userId')
+      ELSE NULL
+    END) AS cartUniqueUsers,
+
+    -- 注文
+    COUNT(DISTINCT CASE
+      WHEN JSON_EXTRACT_SCALAR(data, '$.type') = 'order'
+      THEN JSON_EXTRACT_SCALAR(data, '$.userId')
+      ELSE NULL
+    END) AS orderUniqueUsers
+
+  FROM \`lea-for-marketplace-prod.lea_for_marketplace_prod_userActionLog.userActionLog_raw_latest\`
+  WHERE
+    CAST(JSON_EXTRACT_SCALAR(data, '$.createdAt._seconds') AS INT64)
+      BETWEEN UNIX_SECONDS(TIMESTAMP(startAt))
+      AND UNIX_SECONDS(TIMESTAMP(DATE_ADD(endAt, INTERVAL 1 DAY)))
+
+  GROUP BY date
+),
+
+-- (3) ユーザーごとの注文履歴 (注文日時を取得)
+user_orders AS (
+  SELECT
+    JSON_EXTRACT_SCALAR(data, '$.userId') AS userId,
+    TIMESTAMP_SECONDS(
+      CAST(JSON_EXTRACT_SCALAR(data, '$.createdAt._seconds') AS INT64)
+    ) AS order_ts
+  FROM \`lea-for-marketplace-prod.lea_for_marketplace_prod_userActionLog.userActionLog_raw_latest\`
+  WHERE
+    JSON_EXTRACT_SCALAR(data, '$.type') = 'order'
+    AND CAST(JSON_EXTRACT_SCALAR(data, '$.createdAt._seconds') AS INT64)
+      BETWEEN UNIX_SECONDS(TIMESTAMP(startAt))
+      AND UNIX_SECONDS(TIMESTAMP(DATE_ADD(endAt, INTERVAL 1 DAY)))
+),
+
+-- (4) 各ユーザーの注文を時系列で並べ、何回目の注文かを判別
+user_orders_seq AS (
+  SELECT
+    userId,
+    order_ts,
+    DATE(order_ts) AS order_date,
+    ROW_NUMBER() OVER(
+      PARTITION BY userId
+      ORDER BY order_ts
+    ) AS order_num
+  FROM user_orders
+),
+
+-- (5) 2回目注文 / 3回目注文が起こった日 を集計
+daily_repeats AS (
+  SELECT
+    order_date,
+    COUNT(DISTINCT CASE WHEN order_num >= 2 THEN userId END) AS repeat_2_plus,
+    COUNT(DISTINCT CASE WHEN order_num >= 3 THEN userId END) AS repeat_3_plus
+  FROM user_orders_seq
+  GROUP BY order_date
+)
+
+-- (6) 日付リストに対して各テーブルを JOIN し、ファネル指標を日次でまとめる
+SELECT
+  dr.date,
+  COALESCE(uc.new_users_added,          0) AS newUsersNum,        -- LINE登録
+  COALESCE(da.productUniqueUsers,       0) AS productUniqueUsers,  -- ショップアクセス
+  COALESCE(da.cartUniqueUsers,          0) AS cartUniqueUsers,     -- カート追加
+  COALESCE(da.orderUniqueUsers,         0) AS orderUniqueUsers,    -- 注文
+  COALESCE(drpt.repeat_2_plus,          0) AS repeat2Plus,         -- 2回目注文
+  COALESCE(drpt.repeat_3_plus,          0) AS repeat3Plus          -- 3回目注文
+FROM
+  date_range dr
+  LEFT JOIN user_count_by_date uc  ON dr.date = uc.date
+  LEFT JOIN daily_actions da       ON dr.date = da.date
+  LEFT JOIN daily_repeats drpt     ON dr.date = drpt.order_date
+ORDER BY
+  dr.date;
+`;
+
+	try {
+		const [rows] = await bigqueryClient.query(query);
+		return rows;
+	} catch (error) {
+		console.error("Error fetching LINE funnel data from BigQuery:", error);
+		throw error;
+	}
 }

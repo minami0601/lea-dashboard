@@ -363,34 +363,34 @@ export const generateLINEFunnelData = async (): Promise<FunnelSection> => {
 		}
 
 		// 時系列データ形式に変換
-		const lineRegistrationData = rows.map((row: any) => ({
+		const lineRegistrationData = rows.map((row) => ({
 			date: row.date.value || row.date,
-			value: Number(row.newUsersNum)
+			value: Number(row.newUsersNum),
 		}));
 
-		const shopAccessData = rows.map((row: any) => ({
+		const shopAccessData = rows.map((row) => ({
 			date: row.date.value || row.date,
-			value: Number(row.productUniqueUsers)
+			value: Number(row.productUniqueUsers),
 		}));
 
-		const cartAddData = rows.map((row: any) => ({
+		const cartAddData = rows.map((row) => ({
 			date: row.date.value || row.date,
-			value: Number(row.cartUniqueUsers)
+			value: Number(row.cartUniqueUsers),
 		}));
 
-		const orderData = rows.map((row: any) => ({
+		const orderData = rows.map((row) => ({
 			date: row.date.value || row.date,
-			value: Number(row.orderUniqueUsers)
+			value: Number(row.orderUniqueUsers),
 		}));
 
-		const secondOrderData = rows.map((row: any) => ({
+		const secondOrderData = rows.map((row) => ({
 			date: row.date.value || row.date,
-			value: Number(row.repeat2Plus)
+			value: Number(row.repeat2Plus),
 		}));
 
-		const thirdOrderData = rows.map((row: any) => ({
+		const thirdOrderData = rows.map((row) => ({
 			date: row.date.value || row.date,
-			value: Number(row.repeat3Plus)
+			value: Number(row.repeat3Plus),
 		}));
 
 		return {

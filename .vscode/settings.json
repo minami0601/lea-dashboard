@@ -3,5 +3,8 @@
     "editor.formatOnSave": true,
     "cSpell.words": [
         "notionhq"
-    ]
+    ],
+    "[json]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    }
 }

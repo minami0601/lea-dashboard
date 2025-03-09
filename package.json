@@ -1,35 +1,35 @@
 {
-  "name": "lea-dashboard",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "format": "biome format",
-    "check": "biome check",
-    "check:fix": "biome check --apply",
-    "gcp:auth": "gcloud auth application-default login",
-    "gcp:auth:print": "gcloud auth application-default print-access-token"
-  },
-  "dependencies": {
-    "@google-cloud/bigquery": "^7.9.2",
-    "@types/recharts": "^1.8.29",
-    "date-fns": "^4.1.0",
-    "next": "15.2.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "recharts": "2.9.0",
-    "remeda": "^2.21.0"
-  },
-  "devDependencies": {
-    "@types/node": "^20",
-    "@types/react": "^18.3.18",
-    "@types/react-dom": "^18.3.5",
-    "autoprefixer": "^10.4.19",
-    "biome": "^0.3.3",
-    "postcss": "^8.4.35",
-    "tailwindcss": "^3.4.1",
-    "typescript": "^5"
-  }
+	"name": "lea-dashboard",
+	"version": "0.1.0",
+	"private": true,
+	"scripts": {
+		"dev": "next dev",
+		"build": "next build",
+		"start": "next start",
+		"format": "biome format",
+		"check": "biome check",
+		"check:fix": "biome check --apply",
+		"gcp:auth": "gcloud auth application-default login",
+		"gcp:auth:print": "gcloud auth application-default print-access-token"
+	},
+	"dependencies": {
+		"@google-cloud/bigquery": "^7.9.2",
+		"@types/recharts": "^1.8.29",
+		"date-fns": "^4.1.0",
+		"next": "14.1.4",
+		"react": "^18.2.0",
+		"react-dom": "^18.2.0",
+		"recharts": "2.9.0",
+		"remeda": "^2.21.0"
+	},
+	"devDependencies": {
+		"@types/node": "^20",
+		"@types/react": "^18.2.48",
+		"@types/react-dom": "^18.2.18",
+		"autoprefixer": "^10.4.19",
+		"biome": "^0.3.3",
+		"postcss": "^8.4.35",
+		"tailwindcss": "^3.4.1",
+		"typescript": "^5"
+	}
 }
