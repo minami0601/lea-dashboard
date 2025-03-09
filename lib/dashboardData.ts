@@ -1,5 +1,5 @@
 import { addDays, format, subDays } from "date-fns";
-import { fetchFunnelData, fetchFunnelTimeSeriesData } from "./bigqueryClient";
+import { fetchFunnelData, fetchFunnelTimeSeriesData, fetchLINEFunnelData } from "./bigqueryClient";
 
 // 比較データの型
 type ComparisonPeriod = "前日比" | "前週比" | "前月比";
@@ -355,51 +355,83 @@ export const generateFunnelData = async (): Promise<FunnelSection> => {
 // LINEファネルデータを生成
 export const generateLINEFunnelData = async (): Promise<FunnelSection> => {
 	try {
-		// fetchFunnelTimeSeriesDataを使用して時系列データを取得
-		const timeSeriesData = await fetchFunnelTimeSeriesData();
+		// BigQueryからLINE起点のファネルデータを取得
+		const rows = await fetchLINEFunnelData();
 
-		if (!timeSeriesData) {
-			throw new Error("ファネル時系列データが取得できませんでした。");
+		if (!rows || rows.length === 0) {
+			throw new Error("LINE起点のファネルデータが取得できませんでした。");
 		}
+
+		// 時系列データ形式に変換
+		const lineRegistrationData = rows.map((row: any) => ({
+			date: row.date.value || row.date,
+			value: Number(row.newUsersNum)
+		}));
+
+		const shopAccessData = rows.map((row: any) => ({
+			date: row.date.value || row.date,
+			value: Number(row.productUniqueUsers)
+		}));
+
+		const cartAddData = rows.map((row: any) => ({
+			date: row.date.value || row.date,
+			value: Number(row.cartUniqueUsers)
+		}));
+
+		const orderData = rows.map((row: any) => ({
+			date: row.date.value || row.date,
+			value: Number(row.orderUniqueUsers)
+		}));
+
+		const secondOrderData = rows.map((row: any) => ({
+			date: row.date.value || row.date,
+			value: Number(row.repeat2Plus)
+		}));
+
+		const thirdOrderData = rows.map((row: any) => ({
+			date: row.date.value || row.date,
+			value: Number(row.repeat3Plus)
+		}));
 
 		return {
 			title: "ショップ全体ファネル",
 			data: [
 				{
 					title: "LINE登録",
-					件数: generateTimeSeriesData(90, 1000, 100, 1, true),
+					件数: lineRegistrationData,
 					subData: generateComparisonData(),
 				},
 				{
 					title: "ショップアクセス",
-					件数: generateTimeSeriesData(90, 1000, 100, 1, true),
+					件数: shopAccessData,
 					subData: generateComparisonData(),
 				},
 				{
 					title: "カート追加",
-					件数: generateTimeSeriesData(90, 1000, 100, 1, true),
+					件数: cartAddData,
 					subData: generateComparisonData(),
 				},
 				{
 					title: "注文",
-					件数: generateTimeSeriesData(90, 1000, 100, 1, true),
+					件数: orderData,
 					subData: generateComparisonData(),
 				},
 				{
 					title: "2回目注文",
-					件数: generateTimeSeriesData(90, 1000, 100, 1, true),
+					件数: secondOrderData,
 					subData: generateComparisonData(),
 				},
 				{
 					title: "3回目注文",
-					件数: generateTimeSeriesData(90, 1000, 100, 1, true),
+					件数: thirdOrderData,
 					subData: generateComparisonData(),
 				},
 			],
-			prevPercent: 0,
+			prevPercent: 10.5, // このデータは固定値としますが、必要に応じて計算値に変更可能
 		};
 	} catch (error) {
-		console.error("Error fetching LINE funnel data:", error);
+		console.error("Error generating LINE funnel data:", error);
+		// エラー時はダミーデータを返すか、エラーを投げる
 		throw error;
 	}
 };
@@ -427,10 +459,10 @@ export const generateDashboardData = async (): Promise<Dashboard> => {
 		// 常にBigQueryからデータを取得
 		console.log("BigQueryからデータを取得します");
 
-		// ファネルデータを一度だけ取得
-		const funnelTimeSeriesData = await fetchAndProcessFunnelData();
+		// ファネル時系列データを取得
+		const timeSeriesData = await fetchAndProcessFunnelData();
 
-		if (!funnelTimeSeriesData) {
+		if (!timeSeriesData) {
 			throw new Error("ファネル時系列データが取得できませんでした。");
 		}
 
@@ -439,29 +471,43 @@ export const generateDashboardData = async (): Promise<Dashboard> => {
 			title: "ファネル推移",
 			cols: "12",
 			data: [
-				{ title: "会員ページ", data: funnelTimeSeriesData.memberPageViews },
-				{ title: "新規登録", data: funnelTimeSeriesData.registrations },
-				{ title: "有料転換", data: funnelTimeSeriesData.paidConversions },
-				{ title: "初注文完了", data: funnelTimeSeriesData.firstOrders },
+				{ title: "会員ページ", data: timeSeriesData.memberPageViews },
+				{ title: "新規登録", data: timeSeriesData.registrations },
+				{ title: "有料転換", data: timeSeriesData.paidConversions },
+				{ title: "初注文完了", data: timeSeriesData.firstOrders },
 			],
 			subData: [],
 		};
 
-		// HPの推移グラフ用のデータセクション
+		// HPの推移グラフ用のデータセクション（復活）
 		const hpTimeSeriesSection: GraphSection = {
 			title: "HPの推移",
 			cols: "12",
-			data: [{ title: "HP閲覧数", data: funnelTimeSeriesData.hpViews }],
-			subData: [],
+			data: [{ title: "HP閲覧数", data: timeSeriesData.hpViews }],
+			subData: generateComparisonData(),
 		};
 
-		// ファネルデータも取得
-		const funnelData = await generateFunnelData();
+		// 通常のファネルデータを取得
+		const standardFunnelData = await generateFunnelData();
+
+		// LINE起点のファネルデータを取得
 		const lineFunnelData = await generateLINEFunnelData();
+
+		// ファネルデータを配列にまとめる
+		const allFunnelData = [standardFunnelData, lineFunnelData];
+
 		return {
-			グラフ系: [hpTimeSeriesSection, funnelTimeSeriesSection],
-			HPへの流入内訳: [],
-			ファネル系: [funnelData, lineFunnelData],
+			グラフ系: [
+				hpTimeSeriesSection,
+				funnelTimeSeriesSection,
+				// generateGMVData(),
+				// generatePaidSubscriptionsData(),
+				// generateChurnRateData(),
+				// generateNewRegistrationsData(),
+				// generateSearchCountData(),
+			],
+			HPへの流入内訳: generateTrafficSourceData(),
+			ファネル系: allFunnelData,
 		};
 	} catch (error) {
 		console.error("Error generating dashboard data:", error);
