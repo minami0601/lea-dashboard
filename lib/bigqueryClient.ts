@@ -1,4 +1,5 @@
 import { BigQuery, BigQueryOptions } from "@google-cloud/bigquery";
+import { format } from "date-fns";
 
 // BigQueryクライアントの初期化
 // 常にlea-for-marketplace-prodプロジェクトに接続
@@ -327,4 +328,78 @@ ORDER BY
 		console.error("Error fetching LINE funnel data from BigQuery:", error);
 		throw error;
 	}
+}
+
+// 検索データを取得する関数
+export async function fetchSearchData(
+  startDateStr: string = '2024-01-01',
+  endDateStr: string | null = null,
+) {
+  try {
+    const endAt = endDateStr || format(new Date(), 'yyyy-MM-dd');
+    const startAt = startDateStr;
+
+    // SQLクエリを構築
+    const query = `
+      -- サイト単位と URL 単位を統合するクエリ
+      WITH raw_data AS (
+        -- サイト単位テーブル：sum_top_position を sum_position にエイリアス
+        SELECT
+          data_date,
+          clicks,
+          impressions,
+          sum_top_position AS sum_position
+        FROM \`lea-for-marketplace-prod.searchconsole.searchdata_site_impression\`
+        WHERE data_date >= DATE('${startAt}')
+          AND data_date <= DATE('${endAt}')
+
+        UNION ALL
+
+        -- URL 単位テーブル：sum_position カラム名そのまま
+        SELECT
+          data_date,
+          clicks,
+          impressions,
+          sum_position
+        FROM \`lea-for-marketplace-prod.searchconsole.searchdata_url_impression\`
+        WHERE data_date >= DATE('${startAt}')
+          AND data_date <= DATE('${endAt}')
+      ),
+
+      -- 連続日付を生成し、LEFT JOIN で欠損を埋める
+      all_dates AS (
+        SELECT day
+        FROM UNNEST(
+          GENERATE_DATE_ARRAY(
+            DATE('${startAt}'),
+            DATE('${endAt}')
+          )
+        ) AS day
+      )
+
+      -- 日別にクリック数 / インプレッション数 / CTR / 推定平均掲載順位 を集計
+      SELECT
+        FORMAT_DATE('%Y-%m-%d', d.day) AS event_date,
+        COALESCE(SUM(r.clicks), 0) AS total_clicks,
+        COALESCE(SUM(r.impressions), 0) AS total_impressions,
+        SAFE_DIVIDE(SUM(r.clicks), SUM(r.impressions)) AS ctr,
+        SAFE_DIVIDE(SUM(r.sum_position), SUM(r.impressions)) AS avg_position
+      FROM all_dates d
+      LEFT JOIN raw_data r
+        ON r.data_date = d.day
+      GROUP BY
+        d.day
+      ORDER BY
+        d.day;
+    `;
+
+    // クエリを実行
+    const [rows] = await bigqueryClient.query(query);
+    console.log(`検索データクエリ実行: ${rows.length}行取得`);
+
+    return rows;
+  } catch (error) {
+    console.error("検索データの取得中にエラーが発生しました:", error);
+    return null;
+  }
 }

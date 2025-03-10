@@ -1,5 +1,5 @@
 import { addDays, format } from "date-fns";
-import { fetchFunnelTimeSeriesData, fetchLINEFunnelData } from "./bigqueryClient";
+import { fetchFunnelTimeSeriesData, fetchLINEFunnelData, fetchSearchData } from "./bigqueryClient";
 
 // 比較データの型
 type ComparisonPeriod = "前日比" | "前週比" | "前月比";
@@ -342,20 +342,44 @@ const generateNewRegistrationsData = (): GraphSection => {
 	};
 };
 
-// 指名検索件数のデータを生成
-const generateSearchCountData = (): GraphSection => {
-	return {
-		title: "指名検索件数",
-		cols: "6",
-		data: [
-			{
-				title: "指名検索件数",
-				data: generateTimeSeriesData(90, 2000, 300, 10, true),
-			},
-		],
-		subData: generateComparisonData(generateTimeSeriesData(90, 2000, 300, 10, true)),
-	};
+// 指名検索件数のデータを生成 (BigQueryから実データを取得)
+export const generateSearchCountData = async (
+	startDateStr: string = '2024-01-01',
+	endDateStr: string | null = null
+): Promise<GraphSection> => {
+	try {
+		// BigQueryからデータを取得
+		const searchData = await fetchSearchData(startDateStr, endDateStr);
+
+		if (!searchData || searchData.length === 0) {
+			throw new Error("検索データが取得できませんでした。");
+		}
+
+		// クリック数とインプレッション数の時系列データを作成
+		const clicksData = searchData.map(row => ({
+			date: row.event_date,
+			value: Number(row.total_clicks),
+		}));
+
+		// 比較データを生成
+		const comparisonData = generateComparisonData(clicksData);
+
+		return {
+			title: "指名検索件数",
+			cols: "12",
+			data: [
+				{
+					title: "クリック数",
+					data: clicksData,
+				}
+			],
+			subData: comparisonData,
+		};
+	} catch (error) {
+		throw error;
+	}
 };
+
 // 非同期バージョンのファネル時系列データ生成関数
 export const generateFunnelTimeSeriesDataAsync =
 	async (): Promise<GraphSection> => {
@@ -628,6 +652,8 @@ export const generateDashboardData = async (
 			subData: generateComparisonData(timeSeriesData.hpViews),
 		};
 
+		const searchCountData = await generateSearchCountData(startDateStr, endDateStr);
+
 		// ファネルのデータを生成
 		const funnelData = await generateFunnelData(startDateStr, endDateStr);
 		const lineFunnelData = await generateLINEFunnelData(startDateStr, endDateStr);
@@ -643,13 +669,13 @@ export const generateDashboardData = async (
 				// generatePaidSubscriptionsData(),
 				// generateChurnRateData(),
 				// generateNewRegistrationsData(),
-				// generateSearchCountData(),
+				searchCountData,
 			],
 			HPへの流入内訳: generateTrafficSourceData(),
 			ファネル系: allFunnelData,
 		};
 	} catch (error) {
-		console.error("Error generating dashboard data:", error);
+		console.error("ダッシュボードデータの生成中にエラーが発生しました:", error);
 		throw error;
 	}
 };
