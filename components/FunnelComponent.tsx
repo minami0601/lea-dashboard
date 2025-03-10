@@ -8,11 +8,22 @@ interface TimeSeriesData {
   value: number;
 }
 
+// 比較データの型
+type ComparisonPeriod = '前日比' | '前週比' | '前月比';
+type ComparisonDirection = 'up' | 'down' | 'same';
+
+interface ComparisonData {
+  title: ComparisonPeriod;
+  percent: number;
+  diff: ComparisonDirection;
+}
+
 type FunnelStep = {
   title: string;
   value: number | TimeSeriesData[];
   filteredValue?: number;
   color?: string;
+  comparisonData?: ComparisonData[]; // 各ステップの比較データ
 };
 
 type FunnelComponentProps = {
@@ -37,6 +48,34 @@ const getThreeMonthsAgo = (): string => {
   const date = new Date();
   date.setMonth(date.getMonth() - 3);
   return formatDateToString(date);
+};
+
+// 比較データの矢印アイコンを取得
+const getDirectionIcon = (direction: ComparisonDirection): string => {
+  switch (direction) {
+    case 'up':
+      return '↑';
+    case 'down':
+      return '↓';
+    case 'same':
+      return '→';
+    default:
+      return '';
+  }
+};
+
+// 比較データの色を取得
+const getDirectionColor = (direction: ComparisonDirection): string => {
+  switch (direction) {
+    case 'up':
+      return 'text-green-600';
+    case 'down':
+      return 'text-red-600';
+    case 'same':
+      return 'text-gray-500';
+    default:
+      return '';
+  }
 };
 
 export default function FunnelComponent({ title, steps, dateRange }: FunnelComponentProps) {
@@ -118,11 +157,25 @@ export default function FunnelComponent({ title, steps, dateRange }: FunnelCompo
               <div className="mb-1 text-base font-bold">
                 {step.title}
               </div>
-              <div className="text-2xl font-bold">
+              <div className="text-2xl font-bold mb-2">
                 {typeof step.filteredValue === 'number'
                   ? step.filteredValue.toLocaleString()
                   : '0'}
               </div>
+
+              {/* 比較データ表示 */}
+              {step.comparisonData && step.comparisonData.length > 0 && (
+                <div className="flex flex-col gap-1 mt-4 text-left pr-2 pl-5">
+                  {step.comparisonData.map((item, idx) => (
+                    <div key={idx} className="flex justify-start items-center text-xs">
+                      <span className="mr-1">{item.title}:</span>
+                      <span className={`font-medium ${getDirectionColor(item.diff)}`}>
+                        {getDirectionIcon(item.diff)} {item.percent}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* 矢印と変換率 */}

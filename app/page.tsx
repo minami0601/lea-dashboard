@@ -247,7 +247,8 @@ export default function Home() {
               key={index}
               steps={funnel.data.map(stage => ({
                 title: stage.title,
-                value: stage.件数
+                value: stage.件数,
+                comparisonData: stage.subData
               }))}
               overallConversionRate={funnel.prevPercent}
               dateRange={dateRange}

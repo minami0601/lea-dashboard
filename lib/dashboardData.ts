@@ -75,23 +75,152 @@ export interface Dashboard {
 	ファネル系: FunnelSection[];
 }
 
-// ランダムな比較データを生成する関数
-const generateComparisonData = (): ComparisonData[] => {
+// 時系列データから最新の値または合計値を取得する関数
+const getTotalOrLatestValue = (data: TimeSeriesData[]): number => {
+	if (!data || data.length === 0) return 0;
+
+	// データの最新の値を返す
+	return data[data.length - 1].value;
+};
+
+// 前日の値を取得する関数
+const getPreviousDayValue = (data: TimeSeriesData[]): number => {
+	if (!data || data.length < 2) return 0;
+
+	// データの最後から2番目（前日）の値を返す
+	return data[data.length - 2].value;
+};
+
+// 前週の値を取得する関数
+const getPreviousWeekValue = (data: TimeSeriesData[]): number => {
+	if (!data || data.length < 8) return 0;
+
+	// データの最後から8番目（1週間前）の値を返す
+	return data[data.length - 8].value;
+};
+
+// 前月の値を取得する関数
+const getPreviousMonthValue = (data: TimeSeriesData[]): number => {
+	if (!data || data.length < 31) return 0;
+
+	// データの最後から31番目（約1ヶ月前）の値を返す
+	return data[data.length - 31].value;
+};
+
+// 時系列データから最新の値を取得する関数
+const getLatestValue = (data: TimeSeriesData[]): number => {
+	if (!data || data.length === 0) return 0;
+
+	// データの最新の値を返す
+	return data[data.length - 1].value;
+};
+
+// 直近1週間の合計値を取得する関数
+const getCurrentWeekTotal = (data: TimeSeriesData[]): number => {
+	if (!data || data.length < 7) return 0;
+
+	// 直近7日間のデータを集計
+	let total = 0;
+	for (let i = 1; i <= 7; i++) {
+		if (data.length >= i) {
+			total += data[data.length - i].value;
+		}
+	}
+	return total;
+};
+
+// 前の1週間の合計値を取得する関数
+const getPreviousWeekTotal = (data: TimeSeriesData[]): number => {
+	if (!data || data.length < 14) return 0;
+
+	// 8日前から14日前までのデータを集計
+	let total = 0;
+	for (let i = 8; i <= 14; i++) {
+		if (data.length >= i) {
+			total += data[data.length - i].value;
+		}
+	}
+	return total;
+};
+
+// 直近1ヶ月の合計値を取得する関数
+const getCurrentMonthTotal = (data: TimeSeriesData[]): number => {
+	if (!data || data.length < 30) return 0;
+
+	// 直近30日間のデータを集計
+	let total = 0;
+	for (let i = 1; i <= 30; i++) {
+		if (data.length >= i) {
+			total += data[data.length - i].value;
+		}
+	}
+	return total;
+};
+
+// 前の1ヶ月の合計値を取得する関数
+const getPreviousMonthTotal = (data: TimeSeriesData[]): number => {
+	if (!data || data.length < 60) return 0;
+
+	// 31日前から60日前までのデータを集計
+	let total = 0;
+	for (let i = 31; i <= 60; i++) {
+		if (data.length >= i) {
+			total += data[data.length - i].value;
+		}
+	}
+	return total;
+};
+
+// 比較データを実際の値に基づいて生成する関数
+const generateComparisonData = (
+	data: TimeSeriesData[]
+): ComparisonData[] => {
+	// 現在値と前日値の取得
+	const currentValue = getLatestValue(data);
+	const previousDayValue = getPreviousDayValue(data);
+
+	// 週間データと月間データの集計
+	const currentWeekTotal = getCurrentWeekTotal(data);
+	const previousWeekTotal = getPreviousWeekTotal(data);
+	const currentMonthTotal = getCurrentMonthTotal(data);
+	const previousMonthTotal = getPreviousMonthTotal(data);
+
+	// 前日比の計算
+	const dayPercent = previousDayValue > 0
+		? parseFloat(((currentValue - previousDayValue) / previousDayValue * 100).toFixed(1))
+		: 0;
+	const dayDiff: ComparisonDirection =
+		dayPercent > 0 ? "up" : dayPercent < 0 ? "down" : "same";
+
+	// 前週比の計算（期間対期間の比較）
+	const weekPercent = previousWeekTotal > 0
+		? parseFloat(((currentWeekTotal - previousWeekTotal) / previousWeekTotal * 100).toFixed(1))
+		: 0;
+	const weekDiff: ComparisonDirection =
+		weekPercent > 0 ? "up" : weekPercent < 0 ? "down" : "same";
+
+	// 前月比の計算（期間対期間の比較）
+	const monthPercent = previousMonthTotal > 0
+		? parseFloat(((currentMonthTotal - previousMonthTotal) / previousMonthTotal * 100).toFixed(1))
+		: 0;
+	const monthDiff: ComparisonDirection =
+		monthPercent > 0 ? "up" : monthPercent < 0 ? "down" : "same";
+
 	return [
 		{
 			title: "前日比",
-			percent: parseFloat((Math.random() * 10 - 3).toFixed(1)),
-			diff: Math.random() > 0.3 ? "up" : Math.random() > 0.5 ? "down" : "same",
+			percent: Math.abs(dayPercent),
+			diff: dayDiff,
 		},
 		{
 			title: "前週比",
-			percent: parseFloat((Math.random() * 15 - 5).toFixed(1)),
-			diff: Math.random() > 0.3 ? "up" : Math.random() > 0.5 ? "down" : "same",
+			percent: Math.abs(weekPercent),
+			diff: weekDiff,
 		},
 		{
 			title: "前月比",
-			percent: parseFloat((Math.random() * 20 - 5).toFixed(1)),
-			diff: Math.random() > 0.4 ? "up" : Math.random() > 0.6 ? "down" : "same",
+			percent: Math.abs(monthPercent),
+			diff: monthDiff,
 		},
 	];
 };
@@ -158,7 +287,7 @@ const generateGMVData = (): GraphSection => {
 				data: generateTimeSeriesData(90, 1500000, 200000, 5000, true),
 			},
 		],
-		subData: generateComparisonData(),
+		subData: generateComparisonData(generateTimeSeriesData(90, 1500000, 200000, 5000, true)),
 	};
 };
 
@@ -173,7 +302,7 @@ const generatePaidSubscriptionsData = (): GraphSection => {
 				data: generateTimeSeriesData(90, 5000, 500, 20, true),
 			},
 		],
-		subData: generateComparisonData(),
+		subData: generateComparisonData(generateTimeSeriesData(90, 5000, 500, 20, true)),
 	};
 };
 
@@ -191,10 +320,10 @@ const generateChurnRateData = (): GraphSection => {
 				})),
 			},
 		],
-		subData: generateComparisonData().map((item) => ({
+		subData: generateComparisonData(generateTimeSeriesData(90, 8, 2, -0.05, true).map((item) => ({
 			...item,
-			diff: item.diff === "up" ? "down" : item.diff === "down" ? "up" : "same", // 解約率は下がる方が良い
-		})),
+			value: Math.max(1, item.value), // 最低1%以上、整数値で表示
+		}))),
 	};
 };
 
@@ -209,7 +338,7 @@ const generateNewRegistrationsData = (): GraphSection => {
 				data: generateTimeSeriesData(90, 300, 50, 1, true),
 			},
 		],
-		subData: generateComparisonData(),
+		subData: generateComparisonData(generateTimeSeriesData(90, 300, 50, 1, true)),
 	};
 };
 
@@ -224,7 +353,7 @@ const generateSearchCountData = (): GraphSection => {
 				data: generateTimeSeriesData(90, 2000, 300, 10, true),
 			},
 		],
-		subData: generateComparisonData(),
+		subData: generateComparisonData(generateTimeSeriesData(90, 2000, 300, 10, true)),
 	};
 };
 // 非同期バージョンのファネル時系列データ生成関数
@@ -271,27 +400,27 @@ const generateTrafficSourceData = (): TrafficData[] => {
 		{
 			title: "広告",
 			件数: Math.round(totalTraffic * adShare),
-			subData: generateComparisonData(),
+			subData: generateComparisonData(generateTimeSeriesData(90, 5000, 500, 20, true)),
 		},
 		{
 			title: "SEO",
 			件数: Math.round(totalTraffic * seoShare),
-			subData: generateComparisonData(),
+			subData: generateComparisonData(generateTimeSeriesData(90, 4000, 500, 20, true)),
 		},
 		{
 			title: "SNS",
 			件数: Math.round(totalTraffic * snsShare),
-			subData: generateComparisonData(),
+			subData: generateComparisonData(generateTimeSeriesData(90, 3000, 500, 20, true)),
 		},
 		{
 			title: "直接",
 			件数: Math.round(totalTraffic * directShare),
-			subData: generateComparisonData(),
+			subData: generateComparisonData(generateTimeSeriesData(90, 2000, 500, 20, true)),
 		},
 		{
 			title: "その他",
 			件数: Math.round(totalTraffic * otherShare),
-			subData: generateComparisonData(),
+			subData: generateComparisonData(generateTimeSeriesData(90, 1000, 500, 20, true)),
 		},
 	];
 };
@@ -324,27 +453,27 @@ export const generateFunnelData = async (
 				{
 					title: "HP",
 					件数: hpViews,
-					subData: generateComparisonData(),
+					subData: generateComparisonData(hpViews),
 				},
 				{
 					title: "会員ページ",
 					件数: memberPageViews,
-					subData: generateComparisonData(),
+					subData: generateComparisonData(memberPageViews),
 				},
 				{
 					title: "新規登録",
 					件数: registrations,
-					subData: generateComparisonData(),
+					subData: generateComparisonData(registrations),
 				},
 				{
 					title: "有料転換",
 					件数: paidConversions,
-					subData: generateComparisonData(),
+					subData: generateComparisonData(paidConversions),
 				},
 				{
 					title: "初注文完了",
 					件数: firstOrders,
-					subData: generateComparisonData(),
+					subData: generateComparisonData(firstOrders),
 				},
 			],
 			prevPercent: 0,
@@ -405,32 +534,32 @@ export const generateLINEFunnelData = async (
 				{
 					title: "LINE登録",
 					件数: lineRegistrationData,
-					subData: generateComparisonData(),
+					subData: generateComparisonData(lineRegistrationData),
 				},
 				{
 					title: "ショップアクセス",
 					件数: shopAccessData,
-					subData: generateComparisonData(),
+					subData: generateComparisonData(shopAccessData),
 				},
 				{
 					title: "カート追加",
 					件数: cartAddData,
-					subData: generateComparisonData(),
+					subData: generateComparisonData(cartAddData),
 				},
 				{
 					title: "注文",
 					件数: orderData,
-					subData: generateComparisonData(),
+					subData: generateComparisonData(orderData),
 				},
 				{
 					title: "2回目注文",
 					件数: secondOrderData,
-					subData: generateComparisonData(),
+					subData: generateComparisonData(secondOrderData),
 				},
 				{
 					title: "3回目注文",
 					件数: thirdOrderData,
-					subData: generateComparisonData(),
+					subData: generateComparisonData(thirdOrderData),
 				},
 			],
 			prevPercent: 10.5, // このデータは固定値としますが、必要に応じて計算値に変更可能
@@ -496,7 +625,7 @@ export const generateDashboardData = async (
 			title: "HPの推移",
 			cols: "12",
 			data: [{ title: "HP閲覧数", data: timeSeriesData.hpViews }],
-			subData: generateComparisonData(),
+			subData: generateComparisonData(timeSeriesData.hpViews),
 		};
 
 		// ファネルのデータを生成
